@@ -14,20 +14,31 @@ local heartbeatConnection = nil
 local function loadModule(fileName)
     local url = repoBase .. fileName .. "?t=" .. tostring(tick())
     local success, result = pcall(function() return game:HttpGet(url) end)
-    if not success then return nil end
+    if not success then
+        warn("FETCH_FAIL_" .. fileName)
+        return nil
+    end
     local func, err = loadstring(result)
-    if not func then return nil end
-    return func()
+    if not func then
+        warn("SYNTAX_FAIL_" .. fileName .. "_" .. tostring(err))
+        return nil
+    end
+    local ok, ret = pcall(func)
+    if not ok then
+        warn("RUNTIME_FAIL_" .. fileName .. "_" .. tostring(ret))
+        return nil
+    end
+    return ret
 end
 
 local Config = loadModule("config.lua")
 local Utils = loadModule("utils.lua")
-local UI = loadModule("ui/tabs.lua")
-local WashModule = loadModule("modules/wash.lua")
-local FarmModule = loadModule("modules/farm.lua")
+local UI = loadModule("tabs.lua")
+local WashModule = loadModule("wash.lua")
+local FarmModule = loadModule("farm.lua")
 
 if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("Genesis UI Execution Stopped due to module error.")
+    warn("MODULE_LOAD_FAILED")
     return
 end
 
@@ -113,10 +124,10 @@ Tabs[1].btn.BackgroundColor3 = Color3.fromRGB(35, 25, 30)
 Tabs[1].stroke.Color = Color3.fromRGB(255, 60, 60)
 
 UI.createHeader(Tab_Farming, "Farm Config")
-UI.createToggle(Tab_Farming, "Auto Bid (Bypass Minigame)", false, function(s) Config.AutoBid = s end)
-UI.createToggle(Tab_Farming, "Auto Unload To Unpack Zone", false, function(s) Config.AutoUnload = s end)
+UI.createToggle(Tab_Farming, "Auto Bid", false, function(s) Config.AutoBid = s end)
+UI.createToggle(Tab_Farming, "Auto Unload", false, function(s) Config.AutoUnload = s end)
 
-UI.createInput(Tab_Farming, "Farm Loops (0 = Infinite)", "e.g. 5", function(val)
+UI.createInput(Tab_Farming, "Farm Loops", "0 = Infinite", function(val)
     local num = tonumber(val)
     if num then Config.FarmLoops = num else Config.FarmLoops = 0 end
 end)
@@ -220,7 +231,7 @@ UI.createActionButton(Tab_Teleports, "Warp to Ship Yard", Color3.fromRGB(45, 45,
 UI.createActionButton(Tab_Teleports, "Warp to Shopping Mall", Color3.fromRGB(45, 45, 55), function() warpToArea("Shopping Mall") end)
 
 UI.createHeader(Tab_Misc, "Utilities")
-UI.createActionButton(Tab_Misc, "Spawn: Flatbed (2500 Kg)", Color3.fromRGB(45, 45, 55), function()
+UI.createActionButton(Tab_Misc, "Spawn Flatbed", Color3.fromRGB(45, 45, 55), function()
     local sp = Workspace:FindFirstChild("_VehicleShop") and Workspace._VehicleShop.VehicleSpawns:FindFirstChild("Spawn2")
     if sp and sp:FindFirstChild("Flatbed") then
         local ds = sp.Flatbed:FindFirstChild("DriveSeat")
