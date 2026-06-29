@@ -1,15 +1,16 @@
-local url = "https://raw.githubusercontent.com/vxmpie/storage_hunter/main/src/main.lua?t=" .. tostring(tick())
-local success, code = pcall(function() return game:HttpGet(url) end)
-if not success then
-    warn("[Network Error] โหลดไฟล์จาก GitHub ไม่ได้")
+local u = "https://raw.githubusercontent.com/vxmpie/storage_hunter/main/src/main.lua?t=" .. tostring(tick())
+local s, c = pcall(function() return game:HttpGet(u) end)
+
+if not s then
+    warn("NetworkFetchError")
 else
-    local func, err = loadstring(code)
-    if not func then
-        warn("[Syntax Error] " .. tostring(err))
+    local f, e = loadstring(c)
+    if not f then
+        warn("SyntaxError: " .. tostring(e))
     else
-        local ok, runErr = pcall(func)
+        local ok, r = pcall(f)
         if not ok then
-            warn("[Runtime Error] ตรวจพบบั๊กขณะสคริปต์ทำงาน: " .. tostring(runErr))
+            warn("RuntimeError: " .. tostring(r))
         end
     end
 end
