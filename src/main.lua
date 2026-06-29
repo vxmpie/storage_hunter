@@ -14,18 +14,21 @@ local heartbeatConnection = nil
 local function loadModule(fileName)
     local url = repoBase .. fileName .. "?t=" .. tostring(tick())
     local success, result = pcall(function() return game:HttpGet(url) end)
-    if not success then
-        warn("FETCH_FAIL_" .. fileName)
+    
+    if not success or result:match("404: Not Found") then
+        warn("FETCH_FAIL: หาไฟล์ไม่เจอเช็ค Path ด่วน -> " .. fileName)
         return nil
     end
+    
     local func, err = loadstring(result)
     if not func then
-        warn("SYNTAX_FAIL_" .. fileName .. "_" .. tostring(err))
+        warn("SYNTAX_FAIL: " .. fileName .. " | " .. tostring(err))
         return nil
     end
+    
     local ok, ret = pcall(func)
     if not ok then
-        warn("RUNTIME_FAIL_" .. fileName .. "_" .. tostring(ret))
+        warn("RUNTIME_FAIL: " .. fileName .. " | " .. tostring(ret))
         return nil
     end
     return ret
@@ -33,12 +36,12 @@ end
 
 local Config = loadModule("config.lua")
 local Utils = loadModule("utils.lua")
-local UI = loadModule("tabs.lua")
-local WashModule = loadModule("wash.lua")
-local FarmModule = loadModule("farm.lua")
+local UI = loadModule("ui/tabs.lua")
+local WashModule = loadModule("modules/wash.lua")
+local FarmModule = loadModule("modules/farm.lua")
 
 if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("MODULE_LOAD_FAILED")
+    warn("MODULE_LOAD_FAILED: โหลดโมดูลไม่ครบ UI หยุดทำงาน")
     return
 end
 
