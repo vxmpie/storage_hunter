@@ -6,32 +6,43 @@ local LocalPlayer = Players.LocalPlayer
 
 function WashModule.init(Config, Utils)
     function WashModule.washInventoryItems()
-        local washEvents = ReplicatedStorage:FindFirstChild("Events")
-        if not washEvents then return end
+        local events = ReplicatedStorage:FindFirstChild("Events")
+        if not events then return end
         
-        local washFolder = washEvents:FindFirstChild("Wash")
-        if not washFolder then return end
+        local wash = events:FindFirstChild("Wash")
+        if not wash then return end
         
-        local getWashable = washFolder:FindFirstChild("GetWashableItems")
-        local startWash = washFolder:FindFirstChild("StartWash")
+        local getWashable = wash:FindFirstChild("GetWashableItems")
+        local startWash = wash:FindFirstChild("StartWash")
         
         if getWashable and startWash then
-            local success, data = pcall(function() return getWashable:InvokeServer() end)
+            local success, data = pcall(function()
+                if getWashable:IsA("RemoteFunction") then
+                    return getWashable:InvokeServer()
+                elseif getWashable:IsA("RemoteEvent") then
+                    getWashable:FireServer()
+                end
+            end)
+            
             if success and type(data) == "table" and data.items then
                 for _, item in pairs(data.items) do
                     local guid = item.guid
-                    local isAllowed = false
-                    
-                    if Config.WashRarities.Unknown then
-                        isAllowed = true
-                    end
-                    
-                    if guid and isAllowed then
-                        for slot = 1, 3 do
-                            pcall(function() startWash:InvokeServer(slot, guid) end)
-                            pcall(function() startWash:InvokeServer(guid, slot) end)
-                        end
-                        task.wait(0.05)
+                    if guid and Config.WashRarities.Unknown then
+                        pcall(function()
+                            if startWash:IsA("RemoteFunction") then
+                                for slot = 1, 3 do
+                                    startWash:InvokeServer(slot, guid)
+                                    startWash:InvokeServer(guid, slot)
+                                end
+                                startWash:InvokeServer(guid)
+                            elseif startWash:IsA("RemoteEvent") then
+                                for slot = 1, 3 do
+                                    startWash:FireServer(slot, guid)
+                                    startWash:FireServer(guid, slot)
+                                end
+                                startWash:FireServer(guid)
+                            end
+                        end)
                     end
                 end
             end
