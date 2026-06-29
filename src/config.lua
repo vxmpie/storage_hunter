@@ -9,9 +9,10 @@ local Config = {
 		Junk = false, 
 		Uncommon = false, 
 		Rare = false,
-		Epic = true, 
-		Legendary = true, 
-		Mythical = true, 
+		Epic = false, 
+		Legendary = false, 
+		Mythical = false, 
+		Unknown = false,
 	}
 }
 return Config

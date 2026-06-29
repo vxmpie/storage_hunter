@@ -16,9 +16,13 @@ function WashModule.init(Config, Utils)
 			local successW, dirtyItems = pcall(function() return getWashable:InvokeServer() end)
 			if successW and type(dirtyItems) == "table" then
 				local washCount = 0
+				print("--- เริ่มสแกนของสกปรกในกระเป๋า ---")
+				
 				for k, v in pairs(dirtyItems) do
 					local guid = (type(v) == "table" and (v.guid or v.Id)) or (type(k) == "string" and #k > 10 and k) or v
 					local rarity = type(v) == "table" and (v.Rarity or v.rarity) or "Unknown"
+					
+					print("พบของสกปรก: GUID [" .. tostring(guid) .. "] | Rarity จากเซิร์ฟเวอร์: [" .. tostring(rarity) .. "]")
 					
 					local isAllowed = false
 					if type(rarity) == "string" then
@@ -28,17 +32,25 @@ function WashModule.init(Config, Utils)
 							end
 						end
 					end
-					if Config.WashRarities.Unknown and rarity == "Unknown" then isAllowed = true end
+					
+					if Config.WashRarities.Unknown and not isAllowed then 
+						isAllowed = true 
+					end
 					
 					if guid and isAllowed then
 						pcall(function() 
-							for slot = 1, 3 do startWash:InvokeServer(slot, guid) end
+							for slot = 1, 3 do 
+								pcall(function() startWash:InvokeServer(slot, guid) end)
+								pcall(function() startWash:InvokeServer(guid, slot) end)
+							end
 						end)
 						washCount = washCount + 1
 						task.wait(0.05)
+					else
+						print("ข้ามการล้างไอเทมนี้ (โดนบล็อกโดย Rarity Filter)")
 					end
 				end
-				print("💦 ส่งไอเทมในกระเป๋าไปทำความสะอาดจำนวน " .. washCount .. " ชิ้น")
+				print("ส่งไอเทมในกระเป๋าไปทำความสะอาดทั้งหมด: " .. washCount .. " ชิ้น")
 			end
 		end
 	end

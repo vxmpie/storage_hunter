@@ -190,6 +190,7 @@ UI.createToggle(Tab_Store, "Wash Rare", false, function(s) Config.WashRarities.R
 UI.createToggle(Tab_Store, "Wash Epic", false, function(s) Config.WashRarities.Epic = s end)
 UI.createToggle(Tab_Store, "Wash Legendary", false, function(s) Config.WashRarities.Legendary = s end)
 UI.createToggle(Tab_Store, "Wash Mythical", false, function(s) Config.WashRarities.Mythical = s end)
+UI.createToggle(Tab_Store, "Wash Unknown", false, function(s) Config.WashRarities.Unknown = s end)
 
 UI.createActionButton(Tab_Teleports, "Warp to My Plot", Color3.fromRGB(0, 120, 200), Utils.warpToMyPlot)
 UI.createActionButton(Tab_Teleports, "Warp to Unpack Zone", Color3.fromRGB(200, 120, 0), WashModule.warpToUnpack)
