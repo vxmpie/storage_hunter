@@ -5,6 +5,44 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 function WashModule.init(Config, Utils)
+	function WashModule.washInventoryItems()
+		local washEvents = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Wash")
+		if not washEvents then return end
+		
+		local getWashable = washEvents:FindFirstChild("GetWashableItems")
+		local startWash = washEvents:FindFirstChild("StartWash")
+		
+		if getWashable and startWash then
+			local successW, dirtyItems = pcall(function() return getWashable:InvokeServer() end)
+			if successW and type(dirtyItems) == "table" then
+				local washCount = 0
+				for k, v in pairs(dirtyItems) do
+					local guid = (type(v) == "table" and (v.guid or v.Id)) or (type(k) == "string" and #k > 10 and k) or v
+					local rarity = type(v) == "table" and (v.Rarity or v.rarity) or "Unknown"
+					
+					local isAllowed = false
+					if type(rarity) == "string" then
+						for rName, state in pairs(Config.WashRarities) do
+							if state and string.match(string.lower(rarity), string.lower(rName)) then
+								isAllowed = true; break
+							end
+						end
+					end
+					if Config.WashRarities.Unknown and rarity == "Unknown" then isAllowed = true end
+					
+					if guid and isAllowed then
+						pcall(function() 
+							for slot = 1, 3 do startWash:InvokeServer(slot, guid) end
+						end)
+						washCount = washCount + 1
+						task.wait(0.05)
+					end
+				end
+				print("💦 ส่งไอเทมในกระเป๋าไปทำความสะอาดจำนวน " .. washCount .. " ชิ้น")
+			end
+		end
+	end
+
 	function WashModule.warpToUnpack()
 		local uz = Workspace:FindFirstChild("UnpackZone")
 		if not uz or not uz:FindFirstChild("Pad") then return end
@@ -40,45 +78,11 @@ function WashModule.init(Config, Utils)
 						
 						if #itemsToUnload > 0 then
 							transferItems:FireServer(itemsToUnload)
-							print("📦 Unload ของเสร็จสิ้น!")
+							print("📦 Unload ของเข้ากระเป๋าเสร็จสิ้น!")
 							task.wait(0.5)
 							
 							if Config.AutoWash then
-								local washEvents = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Wash")
-								if washEvents then
-									local getWashable = washEvents:FindFirstChild("GetWashableItems")
-									local startWash = washEvents:FindFirstChild("StartWash")
-									
-									if getWashable and startWash then
-										local successW, dirtyItems = pcall(function() return getWashable:InvokeServer() end)
-										if successW and type(dirtyItems) == "table" then
-											local washCount = 0
-											for k, v in pairs(dirtyItems) do
-												local guid = (type(v) == "table" and (v.guid or v.Id)) or (type(k) == "string" and #k > 10 and k) or v
-												local rarity = type(v) == "table" and (v.Rarity or v.rarity) or "Unknown"
-												
-												local isAllowed = false
-												if type(rarity) == "string" then
-													for rName, state in pairs(Config.WashRarities) do
-														if state and string.match(string.lower(rarity), string.lower(rName)) then
-															isAllowed = true; break
-													    end
-												    end
-												end
-												if Config.WashRarities.Unknown and rarity == "Unknown" then isAllowed = true end
-												
-												if guid and isAllowed then
-													pcall(function() 
-														for slot = 1, 3 do startWash:InvokeServer(slot, guid) end
-													end)
-													washCount = washCount + 1
-													task.wait(0.05)
-												end
-											end
-											print("💦 ส่งไอเทมไปทำความสะอาดจำนวน " .. washCount .. " ชิ้น")
-										end
-									end
-								end
+								WashModule.washInventoryItems()
 							end
 							
 							if humanoid and humanoid.Sit then humanoid.Sit = false end

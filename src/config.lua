@@ -6,7 +6,12 @@ local Config = {
 	SelectedFarm = "", 
 	IsFarming = false,
 	WashRarities = {
-		Common = true, Uncommon = true, Rare = true, Epic = true, Legendary = true, Unknown = true
+		Junk = false, 
+		Uncommon = false, 
+		Rare = false,
+		Epic = true, 
+		Legendary = true, 
+		Mythical = true, 
 	}
 }
 return Config

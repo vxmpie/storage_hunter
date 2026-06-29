@@ -176,14 +176,20 @@ local UnloadScriptBtn = UI.createActionButton(Tab_AutoFarm, "UNLOAD SCRIPT", Col
 end)
 
 UI.createHeader(Tab_Store, "Auto Shop Workflow")
-UI.createToggle(Tab_Store, "Enable Auto Wash", false, function(s) Config.AutoWash = s end)
-UI.createToggle(Tab_Store, "Enable Auto Sell (Place on Display)", false, function(s) Config.AutoSell = s end)
+UI.createToggle(Tab_Store, "Enable Auto Wash (หลัง Unload)", false, function(s) Config.AutoWash = s end)
+UI.createToggle(Tab_Store, "Enable Auto Sell (วางโชว์ขาย)", false, function(s) Config.AutoSell = s end)
+
+UI.createActionButton(Tab_Store, "WASH INVENTORY NOW", Color3.fromRGB(0, 120, 180), function()
+	WashModule.washInventoryItems()
+end)
+
 UI.createHeader(Tab_Store, "Wash Rarity Filter")
-UI.createToggle(Tab_Store, "Wash Common", true, function(s) Config.WashRarities.Common = s end)
-UI.createToggle(Tab_Store, "Wash Uncommon", true, function(s) Config.WashRarities.Uncommon = s end)
-UI.createToggle(Tab_Store, "Wash Rare", true, function(s) Config.WashRarities.Rare = s end)
-UI.createToggle(Tab_Store, "Wash Epic", true, function(s) Config.WashRarities.Epic = s end)
-UI.createToggle(Tab_Store, "Wash Legendary", true, function(s) Config.WashRarities.Legendary = s end)
+UI.createToggle(Tab_Store, "Wash Junk", false, function(s) Config.WashRarities.Junk = s end)
+UI.createToggle(Tab_Store, "Wash Uncommon", false, function(s) Config.WashRarities.Uncommon = s end)
+UI.createToggle(Tab_Store, "Wash Rare", false, function(s) Config.WashRarities.Rare = s end)
+UI.createToggle(Tab_Store, "Wash Epic", false, function(s) Config.WashRarities.Epic = s end)
+UI.createToggle(Tab_Store, "Wash Legendary", false, function(s) Config.WashRarities.Legendary = s end)
+UI.createToggle(Tab_Store, "Wash Mythical", false, function(s) Config.WashRarities.Mythical = s end)
 
 UI.createActionButton(Tab_Teleports, "Warp to My Plot", Color3.fromRGB(0, 120, 200), Utils.warpToMyPlot)
 UI.createActionButton(Tab_Teleports, "Warp to Unpack Zone", Color3.fromRGB(200, 120, 0), WashModule.warpToUnpack)
