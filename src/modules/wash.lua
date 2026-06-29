@@ -63,7 +63,7 @@ function WashModule.init(Config, Utils)
         end
     end
 
-    function WashModule.washInventoryItems()
+    function WashModule.processWashLoop()
         local events = ReplicatedStorage:FindFirstChild("Events")
         if not events then return end
         
@@ -94,23 +94,24 @@ function WashModule.init(Config, Utils)
                     local rarity = "Unknown"
                     
                     if itemDB and itemId then
-                        local successDB, itemInfo = pcall(function() return itemDB[itemId] end)
-                        if successDB and type(itemInfo) == "table" then
-                            rarity = itemInfo.Rarity or itemInfo.rarity or itemInfo.Tier or itemInfo.tier or "Unknown"
+                        local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
+                        if type(info) == "table" then
+                            local rRaw = info.Rarity or info.rarity or info.Tier or info.tier or "Unknown"
+                            rarity = tostring(rRaw)
                         end
                     end
                     
                     local isAllowed = false
-                    if type(rarity) == "string" then
-                        for rName, state in pairs(Config.WashRarities) do
-                            if state and string.match(string.lower(rarity), string.lower(rName)) then
-                                isAllowed = true
-                                break
-                            end
+                    local rLower = string.lower(rarity)
+                    
+                    for rName, state in pairs(Config.WashRarities) do
+                        if state and string.find(rLower, string.lower(rName)) then
+                            isAllowed = true
+                            break
                         end
                     end
                     
-                    if Config.WashRarities.Unknown and not isAllowed and rarity == "Unknown" then
+                    if Config.WashRarities.Unknown and not isAllowed and (rarity == "Unknown" or rarity == "nil") then
                         isAllowed = true
                     end
                     
@@ -128,7 +129,7 @@ function WashModule.init(Config, Utils)
                     local washCFrame = getWashStationCFrame()
                     if washCFrame then
                         Utils.warpTo(washCFrame)
-                        task.wait(0.5)
+                        task.wait(1)
                     end
                     
                     for _, guid in ipairs(itemsToWash) do
@@ -148,7 +149,7 @@ function WashModule.init(Config, Utils)
                             end
                         end)
                         
-                        task.wait(0.2)
+                        task.wait(0.3)
                         
                         local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
                         for _, rem in ipairs(postWashRemotes) do
@@ -176,7 +177,7 @@ function WashModule.init(Config, Utils)
                     end
                     
                     if originalCFrame then
-                        task.wait(0.5)
+                        task.wait(1)
                         Utils.warpTo(originalCFrame)
                     end
                 end
@@ -237,21 +238,19 @@ function WashModule.init(Config, Utils)
                         if humanoid and humanoid.Sit then 
                             humanoid.Sit = false 
                         end
-                        task.wait(0.5)
-                        
-                        if Config.AutoWash then
-                            WashModule.washInventoryItems()
-                        end
-                        
-                        if Config.AutoSell then
-                            Utils.warpToMyPlot()
-                            task.wait(1)
-                        end
                     end
                 end
             end
         end
     end
+
+    task.spawn(function()
+        while task.wait(5) do
+            if Config.AutoWash then
+                WashModule.processWashLoop()
+            end
+        end
+    end)
 end
 
 return WashModule
