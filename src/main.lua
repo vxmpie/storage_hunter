@@ -1,6 +1,5 @@
 local githubUser = "vxmpie"
 local repoBase = "https://raw.githubusercontent.com/" .. githubUser .. "/storage_hunter/main/src/"
-
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -9,11 +8,36 @@ local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
-local Config = loadstring(game:HttpGet(repoBase .. "config.lua"))()
-local Utils = loadstring(game:HttpGet(repoBase .. "utils.lua"))()
-local UI = loadstring(game:HttpGet(repoBase .. "ui/tabs.lua"))()
-local WashModule = loadstring(game:HttpGet(repoBase .. "modules/wash.lua"))()
-local FarmModule = loadstring(game:HttpGet(repoBase .. "modules/farm.lua"))()
+local heartbeatConnection = nil
+
+local function loadModule(fileName)
+	local url = repoBase .. fileName .. "?t=" .. tostring(tick())
+	local success, result = pcall(function() return game:HttpGet(url) end)
+	
+	if not success then 
+		warn("[Network Error] " .. fileName) 
+		return nil 
+	end
+	
+	local func, err = loadstring(result)
+	if not func then 
+		warn("[Syntax Error] " .. fileName .. " | Error: " .. tostring(err)) 
+		return nil 
+	end
+	
+	return func()
+end
+
+local Config = loadModule("config.lua")
+local Utils = loadModule("utils.lua")
+local UI = loadModule("ui/tabs.lua")
+local WashModule = loadModule("modules/wash.lua")
+local FarmModule = loadModule("modules/farm.lua")
+
+if not Config or not Utils or not UI or not WashModule or not FarmModule then
+	warn("Genesis UI Execution Stopped due to module error.")
+	return
+end
 
 WashModule.init(Config, Utils)
 FarmModule.init(Config, Utils, WashModule)
@@ -44,7 +68,7 @@ MainFrame.Size = UDim2.new(0, 550, 0, 420)
 MainFrame.Position = UDim2.new(0.5, -275, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false 
+MainFrame.Visible = false
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -89,14 +113,13 @@ local Tab_AutoFarm = UI.createTab(Sidebar, ContentArea, Tabs, "Auto Farm", 0)
 local Tab_Store = UI.createTab(Sidebar, ContentArea, Tabs, "Wash & Sell", 1)
 local Tab_Teleports = UI.createTab(Sidebar, ContentArea, Tabs, "Teleports", 2)
 local Tab_Vehicles = UI.createTab(Sidebar, ContentArea, Tabs, "Vehicles", 3)
-Tabs[1].scroll.Visible = true 
+Tabs[1].scroll.Visible = true
 Tabs[1].btn.TextColor3 = Color3.fromRGB(255, 50, 50)
 
--- บรรจุระบบเข้าแท็บ Auto Farm
 UI.createHeader(Tab_AutoFarm, "Settings")
 UI.createToggle(Tab_AutoFarm, "Auto Bid (Bypass Minigame)", false, function(s) Config.AutoBid = s end)
 UI.createToggle(Tab_AutoFarm, "Auto Unload when full", false, function(s) Config.AutoUnload = s end)
-UI.createHeader(Tab_AutoFarm, "Select Place to Farm ˅")
+UI.createHeader(Tab_AutoFarm, "Select Place to Farm")
 
 local farmOptions = {"Junk Yard", "Back Alley", "Farm Yard", "Ship Yard"}
 local farmButtons = {}
@@ -109,7 +132,6 @@ for _, place in ipairs(farmOptions) do
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -30, 1, 0); lbl.Position = UDim2.new(0, 30, 0, 0); lbl.BackgroundTransparency = 1; lbl.Text = place; lbl.TextColor3 = Color3.fromRGB(200, 200, 200); lbl.Font = Enum.Font.Gotham; lbl.TextSize = 14; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = frame
 	table.insert(farmButtons, {box = box, name = place})
-
 	box.MouseButton1Click:Connect(function()
 		for _, b in ipairs(farmButtons) do b.box.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
 		box.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
@@ -123,12 +145,33 @@ StartFarmBtn.MouseButton1Click:Connect(function()
 	if Config.SelectedFarm == "" then return warn("Select farm location first") end
 	Config.IsFarming = not Config.IsFarming
 	if Config.IsFarming then
-		StartFarmBtn.Text = "STOP AUTO FARM"; StartFarmBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		StartFarmBtn.Text = "STOP AUTO FARM"
+		StartFarmBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 		task.spawn(function()
-			while Config.IsFarming do FarmModule.startAuctionAndCollect(Config.SelectedFarm); task.wait(1) end
+			while Config.IsFarming do
+				FarmModule.startAuctionAndCollect(Config.SelectedFarm)
+				task.wait(1)
+			end
 		end)
 	else
-		StartFarmBtn.Text = "START AUTO FARM"; StartFarmBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 70)
+		StartFarmBtn.Text = "START AUTO FARM"
+		StartFarmBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 70)
+	end
+end)
+
+local UnloadScriptBtn = UI.createActionButton(Tab_AutoFarm, "UNLOAD SCRIPT", Color3.fromRGB(150, 35, 35), function()
+	Config.IsFarming = false
+	Config.AutoBid = false
+	Config.AutoUnload = false
+	Config.AutoWash = false
+	Config.AutoSell = false
+	if heartbeatConnection then
+		heartbeatConnection:Disconnect()
+		print("Disconnected Heartbeat Connection")
+	end
+	if ScreenGui then
+		ScreenGui:Destroy()
+		print("Genesis UI Destroyed Successfully")
 	end
 end)
 
@@ -144,10 +187,14 @@ UI.createToggle(Tab_Store, "Wash Legendary", true, function(s) Config.WashRariti
 
 UI.createActionButton(Tab_Teleports, "Warp to My Plot", Color3.fromRGB(0, 120, 200), Utils.warpToMyPlot)
 UI.createActionButton(Tab_Teleports, "Warp to Unpack Zone", Color3.fromRGB(200, 120, 0), WashModule.warpToUnpack)
+
 local function warpToArea(areaName)
 	local targetArea = Workspace.Areas:FindFirstChild(areaName)
-	if targetArea and targetArea:FindFirstChild("AreaBoundary") then Utils.warpTo(targetArea.AreaBoundary.CFrame) end
+	if targetArea and targetArea:FindFirstChild("AreaBoundary") then
+		Utils.warpTo(targetArea.AreaBoundary.CFrame)
+	end
 end
+
 UI.createActionButton(Tab_Teleports, "Warp to Junk Yard", nil, function() warpToArea("Junk Yard") end)
 UI.createActionButton(Tab_Teleports, "Warp to Back Alley", nil, function() warpToArea("Back Alley") end)
 UI.createActionButton(Tab_Teleports, "Warp to Farm Yard", nil, function() warpToArea("Farmyard") end)
@@ -165,23 +212,24 @@ UI.createActionButton(Tab_Vehicles, "Spawn: Flatbed (2500 Kg)", nil, function()
 	end
 end)
 
-RunService.Heartbeat:Connect(function()
+heartbeatConnection = RunService.Heartbeat:Connect(function()
 	local pGui = LocalPlayer:FindFirstChild("PlayerGui")
 	if pGui and pGui:FindFirstChild("UIControllerGui") then
 		if Config.AutoBid and pGui.UIControllerGui:FindFirstChild("AuctionBiddingContainer") and pGui.UIControllerGui.AuctionBiddingContainer.Visible then
 			local ev = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Auction")
-			if ev and ev:FindFirstChild("Bid") then ev.Bid:FireServer() end
+			if ev and ev:FindFirstChild("Bid") then
+				ev.Bid:FireServer()
+			end
 		end
-		
 		local outer = pGui.UIControllerGui:FindFirstChild("NewDiscoveryOuter")
 		if outer and outer.Visible then
 			local popup = outer:FindFirstChild("DiscoveryPopup")
 			local btn = popup and popup:FindFirstChild("RepairContinueButton")
 			if btn and btn.AbsolutePosition then
-				outer.Visible = false 
+				outer.Visible = false
 				pcall(function()
 					local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
-					local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56 
+					local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
 					VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
 					task.wait(0.01)
 					VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
