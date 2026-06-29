@@ -25,6 +25,44 @@ function WashModule.init(Config, Utils)
         return nil
     end
 
+    local function clickUI(btn)
+        if btn then
+            pcall(function()
+                if getconnections then
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+                        conn:Fire()
+                    end
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
+                        conn:Fire()
+                    end
+                end
+            end)
+        end
+    end
+
+    local function autoClaimUI()
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+        if not uiC then return end
+
+        local washShop = uiC:FindFirstChild("WashShopPanel")
+        if washShop and washShop:FindFirstChild("SlotsContainer") then
+            for i = 1, 3 do
+                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
+                if slot and slot:FindFirstChild("Content") then
+                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
+                    task.wait(0.1)
+                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
+                end
+            end
+        end
+
+        local washReveal = uiC:FindFirstChild("WashReveal")
+        if washReveal and washReveal:FindFirstChild("Content") then
+            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
+        end
+    end
+
     function WashModule.washInventoryItems()
         local events = ReplicatedStorage:FindFirstChild("Events")
         if not events then return end
@@ -82,6 +120,11 @@ function WashModule.init(Config, Utils)
                 end
                 
                 if #itemsToWash > 0 then
+                    local originalCFrame
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        originalCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+                    end
+
                     local washCFrame = getWashStationCFrame()
                     if washCFrame then
                         Utils.warpTo(washCFrame)
@@ -127,7 +170,14 @@ function WashModule.init(Config, Utils)
                                 end)
                             end
                         end
-                        task.wait(0.1)
+                        
+                        task.wait(0.2)
+                        autoClaimUI()
+                    end
+                    
+                    if originalCFrame then
+                        task.wait(0.5)
+                        Utils.warpTo(originalCFrame)
                     end
                 end
             end
