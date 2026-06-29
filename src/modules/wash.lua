@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
 
 function WashModule.init(Config, Utils)
 	function WashModule.washInventoryItems()
@@ -10,47 +11,26 @@ function WashModule.init(Config, Utils)
 		if not washEvents then return end
 		
 		local getWashable = washEvents:FindFirstChild("GetWashableItems")
-		local startWash = washEvents:FindFirstChild("StartWash")
 		
-		if getWashable and startWash then
+		if getWashable then
 			local successW, dirtyItems = pcall(function() return getWashable:InvokeServer() end)
 			if successW and type(dirtyItems) == "table" then
-				local washCount = 0
-				print("--- เริ่มสแกนของสกปรกในกระเป๋า ---")
-				
 				for k, v in pairs(dirtyItems) do
-					local guid = (type(v) == "table" and (v.guid or v.Id)) or (type(k) == "string" and #k > 10 and k) or v
-					local rarity = type(v) == "table" and (v.Rarity or v.rarity) or "Unknown"
-					
-					print("พบของสกปรก: GUID [" .. tostring(guid) .. "] | Rarity จากเซิร์ฟเวอร์: [" .. tostring(rarity) .. "]")
-					
-					local isAllowed = false
-					if type(rarity) == "string" then
-						for rName, state in pairs(Config.WashRarities) do
-							if state and string.match(string.lower(rarity), string.lower(rName)) then
-								isAllowed = true; break
+					if type(v) == "table" then
+						local successJson, jsonString = pcall(function()
+							return HttpService:JSONEncode(v)
+						end)
+						if successJson then
+							print("DATA_DUMP_KEY_" .. tostring(k) .. ": " .. jsonString)
+						else
+							for subK, subV in pairs(v) do
+								print("SUB_DATA: " .. tostring(subK) .. " = " .. tostring(subV))
 							end
 						end
-					end
-					
-					if Config.WashRarities.Unknown and not isAllowed then 
-						isAllowed = true 
-					end
-					
-					if guid and isAllowed then
-						pcall(function() 
-							for slot = 1, 3 do 
-								pcall(function() startWash:InvokeServer(slot, guid) end)
-								pcall(function() startWash:InvokeServer(guid, slot) end)
-							end
-						end)
-						washCount = washCount + 1
-						task.wait(0.05)
 					else
-						print("ข้ามการล้างไอเทมนี้ (โดนบล็อกโดย Rarity Filter)")
+						print("RAW_DATA: " .. tostring(k) .. " = " .. tostring(v))
 					end
 				end
-				print("ส่งไอเทมในกระเป๋าไปทำความสะอาดทั้งหมด: " .. washCount .. " ชิ้น")
 			end
 		end
 	end
@@ -90,7 +70,6 @@ function WashModule.init(Config, Utils)
 						
 						if #itemsToUnload > 0 then
 							transferItems:FireServer(itemsToUnload)
-							print("📦 Unload ของเข้ากระเป๋าเสร็จสิ้น!")
 							task.wait(0.5)
 							
 							if Config.AutoWash then
@@ -101,20 +80,8 @@ function WashModule.init(Config, Utils)
 							task.wait(0.5)
 							
 							if Config.AutoSell then
-								print("🏪 กำลังวาร์ปไปที่ Plot เพื่อจัดเรียงของขึ้นโต๊ะขาย...")
 								Utils.warpToMyPlot()
 								task.wait(1)
-								
-								local myPlot = Utils.findMyPlot()
-								if myPlot and myPlot:FindFirstChild("Furniture") then
-									local availableSnaps = {}
-									for _, obj in pairs(myPlot.Furniture:GetDescendants()) do
-										if obj.Name:match("SnapPoint") and obj:FindFirstChild("ShelfAddItemPrompt") then
-											table.insert(availableSnaps, obj)
-										end
-									end
-									print("🔍 พบจุดวางของ (SnapPoint) ว่างในร้าน: " .. #availableSnaps .. " จุด")
-								end
 							end
 						end
 					end
