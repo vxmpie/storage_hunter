@@ -205,6 +205,7 @@ UI.createActionButton(Tab_Teleports, "Warp to Junk Yard", nil, function() warpTo
 UI.createActionButton(Tab_Teleports, "Warp to Back Alley", nil, function() warpToArea("Back Alley") end)
 UI.createActionButton(Tab_Teleports, "Warp to Farm Yard", nil, function() warpToArea("Farmyard") end)
 UI.createActionButton(Tab_Teleports, "Warp to Ship Yard", nil, function() warpToArea("Shipyard") end)
+UI.createActionButton(Tab_Teleports, "Warp to Shopping Mall", nil, function() warpToArea("Shopping Mall") end)
 
 UI.createActionButton(Tab_Vehicles, "Spawn: Flatbed (2500 Kg)", nil, function()
 	local sp = Workspace:FindFirstChild("_VehicleShop") and Workspace._VehicleShop.VehicleSpawns:FindFirstChild("Spawn2")
