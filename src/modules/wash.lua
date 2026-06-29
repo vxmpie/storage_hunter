@@ -4,7 +4,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local itemDB
+pcall(function()
+    itemDB = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Items"))
+end)
+
 function WashModule.init(Config, Utils)
+    local function getWashStationCFrame()
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                local name = string.lower(obj.Name)
+                local action = string.lower(obj.ActionText)
+                if string.find(name, "wash") or string.find(action, "wash") or string.find(name, "clean") or string.find(action, "clean") then
+                    if obj.Parent and obj.Parent:IsA("BasePart") then
+                        return obj.Parent.CFrame
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
     function WashModule.washInventoryItems()
         local events = ReplicatedStorage:FindFirstChild("Events")
         if not events then return end
@@ -14,6 +34,9 @@ function WashModule.init(Config, Utils)
         
         local getWashable = wash:FindFirstChild("GetWashableItems")
         local startWash = wash:FindFirstChild("StartWash")
+        local speedUpWash = wash:FindFirstChild("SpeedUpWash")
+        local collectWash = wash:FindFirstChild("CollectWash")
+        local claimWashedItem = wash:FindFirstChild("ClaimWashedItem")
         
         if getWashable and startWash then
             local success, data = pcall(function()
@@ -25,9 +48,47 @@ function WashModule.init(Config, Utils)
             end)
             
             if success and type(data) == "table" and data.items then
+                local itemsToWash = {}
+                
                 for _, item in pairs(data.items) do
                     local guid = item.guid
-                    if guid and Config.WashRarities.Unknown then
+                    local itemId = item.ItemId or item.itemId or item.id
+                    local rarity = "Unknown"
+                    
+                    if itemDB and itemId then
+                        local successDB, itemInfo = pcall(function() return itemDB[itemId] end)
+                        if successDB and type(itemInfo) == "table" then
+                            rarity = itemInfo.Rarity or itemInfo.rarity or itemInfo.Tier or itemInfo.tier or "Unknown"
+                        end
+                    end
+                    
+                    local isAllowed = false
+                    if type(rarity) == "string" then
+                        for rName, state in pairs(Config.WashRarities) do
+                            if state and string.match(string.lower(rarity), string.lower(rName)) then
+                                isAllowed = true
+                                break
+                            end
+                        end
+                    end
+                    
+                    if Config.WashRarities.Unknown and not isAllowed and rarity == "Unknown" then
+                        isAllowed = true
+                    end
+                    
+                    if guid and isAllowed then
+                        table.insert(itemsToWash, guid)
+                    end
+                end
+                
+                if #itemsToWash > 0 then
+                    local washCFrame = getWashStationCFrame()
+                    if washCFrame then
+                        Utils.warpTo(washCFrame)
+                        task.wait(0.5)
+                    end
+                    
+                    for _, guid in ipairs(itemsToWash) do
                         pcall(function()
                             if startWash:IsA("RemoteFunction") then
                                 for slot = 1, 3 do
@@ -43,6 +104,30 @@ function WashModule.init(Config, Utils)
                                 startWash:FireServer(guid)
                             end
                         end)
+                        
+                        task.wait(0.2)
+                        
+                        local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
+                        for _, rem in ipairs(postWashRemotes) do
+                            if rem then
+                                pcall(function()
+                                    for slot = 1, 3 do
+                                        if rem:IsA("RemoteFunction") then
+                                            pcall(function() rem:InvokeServer(slot, guid) end)
+                                            pcall(function() rem:InvokeServer(guid, slot) end)
+                                            pcall(function() rem:InvokeServer(slot) end)
+                                            pcall(function() rem:InvokeServer(guid) end)
+                                        elseif rem:IsA("RemoteEvent") then
+                                            pcall(function() rem:FireServer(slot, guid) end)
+                                            pcall(function() rem:FireServer(guid, slot) end)
+                                            pcall(function() rem:FireServer(slot) end)
+                                            pcall(function() rem:FireServer(guid) end)
+                                        end
+                                    end
+                                end)
+                            end
+                        end
+                        task.wait(0.1)
                     end
                 end
             end
@@ -99,14 +184,14 @@ function WashModule.init(Config, Utils)
                         transferItems:FireServer(itemsToUnload)
                         task.wait(0.5)
                         
-                        if Config.AutoWash then
-                            WashModule.washInventoryItems()
-                        end
-                        
                         if humanoid and humanoid.Sit then 
                             humanoid.Sit = false 
                         end
                         task.wait(0.5)
+                        
+                        if Config.AutoWash then
+                            WashModule.washInventoryItems()
+                        end
                         
                         if Config.AutoSell then
                             Utils.warpToMyPlot()
