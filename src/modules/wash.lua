@@ -30,10 +30,12 @@ function WashModule.init(Config, Utils)
             pcall(function()
                 if getconnections then
                     for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-                        conn:Fire()
+                        if type(conn.Function) == "function" then pcall(conn.Function)
+                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
                     end
                     for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
-                        conn:Fire()
+                        if type(conn.Function) == "function" then pcall(conn.Function)
+                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
                     end
                 end
             end)
@@ -63,7 +65,7 @@ function WashModule.init(Config, Utils)
         end
     end
 
-    function WashModule.processWashLoop()
+    function WashModule.washInventoryItems()
         local events = ReplicatedStorage:FindFirstChild("Events")
         if not events then return end
         
@@ -247,7 +249,7 @@ function WashModule.init(Config, Utils)
     task.spawn(function()
         while task.wait(5) do
             if Config.AutoWash then
-                WashModule.processWashLoop()
+                WashModule.washInventoryItems()
             end
         end
     end)
