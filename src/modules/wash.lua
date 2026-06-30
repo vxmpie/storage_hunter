@@ -3,162 +3,21 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local GuiService = game:GetService("GuiService")
-
-local itemDB
-pcall(function()
-    itemDB = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Items"))
-end)
 
 function WashModule.init(Config, Utils)
-    local function getWashPromptObj()
+    local function getWashStationCFrame()
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                 local name = string.lower(obj.Name)
                 local action = string.lower(obj.ActionText)
                 if string.find(name, "wash") or string.find(action, "wash") or string.find(name, "clean") or string.find(action, "clean") then
-                    return obj
+                    if obj.Parent and obj.Parent:IsA("BasePart") then
+                        return obj.Parent.CFrame
+                    end
                 end
             end
         end
         return nil
-    end
-
-    local function getWashStationCFrame()
-        local prompt = getWashPromptObj()
-        if prompt and prompt.Parent and prompt.Parent:IsA("BasePart") then
-            return prompt.Parent.CFrame
-        end
-        return nil
-    end
-
-    local function clickUI(btn)
-        if not btn then return end
-        pcall(function()
-            if type(firesignal) == "function" then
-                pcall(function() firesignal(btn.MouseButton1Click) end)
-                pcall(function() firesignal(btn.Activated) end)
-            end
-            
-            local absPos = btn.AbsolutePosition
-            local absSize = btn.AbsoluteSize
-            if absSize.X > 0 and absSize.Y > 0 then
-                local inset = GuiService:GetGuiInset()
-                local x = absPos.X + (absSize.X / 2)
-                local y = absPos.Y + (absSize.Y / 2) + inset.Y
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-            end
-        end)
-    end
-
-    local function clickDialogOption(targetStr)
-        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not pGui then return false end
-        
-        local clicked = false
-        for _, obj in pairs(pGui:GetDescendants()) do
-            if obj:IsA("TextButton") and obj.AbsoluteSize.X > 0 and obj.AbsoluteSize.Y > 0 then
-                local textStr = string.lower(obj.Text)
-                if textStr == "" or textStr == " " then
-                    for _, child in pairs(obj:GetDescendants()) do
-                        if child:IsA("TextLabel") or child:IsA("TextBox") then
-                            if child.Text and child.Text ~= "" then
-                                textStr = textStr .. " " .. string.lower(child.Text)
-                            end
-                        end
-                    end
-                end
-                
-                if string.find(textStr, targetStr) then
-                    clickUI(obj)
-                    clicked = true
-                end
-            end
-        end
-        return clicked
-    end
-
-    local function processWashUI()
-        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-        if not uiC then return false end
-
-        local washShop = uiC:FindFirstChild("WashShopPanel")
-        if not washShop or not washShop.Visible then return false end
-
-        local isBusy = false
-        if washShop:FindFirstChild("SlotsContainer") then
-            for i = 1, 3 do
-                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
-                if slot and slot:FindFirstChild("Content") then
-                    local content = slot.Content
-                    local colBtn = content:FindFirstChild("CollectBtn")
-                    local clmBtn = content:FindFirstChild("ClaimBtn")
-                    local spdBtn = content:FindFirstChild("SpeedUpBtn")
-                    local timer = content:FindFirstChild("TimerText")
-                    local itemName = content:FindFirstChild("ItemName")
-                    
-                    local hasTimer = timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "00:00"
-                    
-                    if (spdBtn and spdBtn.Visible) or hasTimer then 
-                        isBusy = true 
-                        if hasTimer and timer.Text ~= "00:00" then
-                            local iName = (itemName and itemName.Text) or "Item"
-                            warn("WASH_TIMER_" .. iName .. "_" .. timer.Text)
-                        end
-                    end
-                    
-                    if colBtn and colBtn.Visible then 
-                        isBusy = true 
-                        clickUI(colBtn) 
-                    end
-                    
-                    task.wait(0.05)
-                    
-                    if clmBtn and clmBtn.Visible then 
-                        isBusy = true 
-                        clickUI(clmBtn) 
-                    end
-                end
-            end
-        end
-
-        local washReveal = uiC:FindFirstChild("WashReveal")
-        if washReveal and washReveal.Visible and washReveal:FindFirstChild("Content") then
-            local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
-            if clmBtn and clmBtn.Visible then 
-                isBusy = true
-                clickUI(clmBtn) 
-            end
-        end
-        
-        return isBusy
-    end
-
-    local function forceClaimRemotes(washFolder, guid)
-        local rems = {washFolder:FindFirstChild("CollectWash"), washFolder:FindFirstChild("ClaimWashedItem")}
-        for _, rem in ipairs(rems) do
-            if rem then
-                pcall(function()
-                    for slot = 1, 3 do
-                        if rem:IsA("RemoteFunction") then 
-                            pcall(function() rem:InvokeServer(slot, guid) end) 
-                            pcall(function() rem:InvokeServer(guid, slot) end) 
-                            pcall(function() rem:InvokeServer(slot) end) 
-                            pcall(function() rem:InvokeServer(guid) end)
-                        elseif rem:IsA("RemoteEvent") then 
-                            pcall(function() rem:FireServer(slot, guid) end) 
-                            pcall(function() rem:FireServer(guid, slot) end) 
-                            pcall(function() rem:FireServer(slot) end) 
-                            pcall(function() rem:FireServer(guid) end) 
-                        end
-                    end
-                end)
-            end
-        end
     end
 
     function WashModule.washInventoryItems()
@@ -169,6 +28,8 @@ function WashModule.init(Config, Utils)
         
         local getWashable = wash:FindFirstChild("GetWashableItems")
         local startWash = wash:FindFirstChild("StartWash")
+        local claimWash = wash:FindFirstChild("ClaimWashedItem")
+        local collectWash = wash:FindFirstChild("CollectWash")
         
         if getWashable and startWash then
             local success, data = pcall(function()
@@ -192,69 +53,46 @@ function WashModule.init(Config, Utils)
                     local guid = itemsToWash[1]
                     
                     pcall(function()
-                        if startWash:IsA("RemoteFunction") then
-                            for slot = 1, 3 do startWash:InvokeServer(slot, guid); startWash:InvokeServer(guid, slot) end
-                            startWash:InvokeServer(guid)
-                        elseif startWash:IsA("RemoteEvent") then
-                            for slot = 1, 3 do startWash:FireServer(slot, guid); startWash:FireServer(guid, slot) end
-                            startWash:FireServer(guid)
-                        end
+                        if startWash:IsA("RemoteFunction") then startWash:InvokeServer(guid)
+                        elseif startWash:IsA("RemoteEvent") then startWash:FireServer(guid) end
                     end)
                     
-                    task.wait(0.8)
+                    task.wait(2.8)
                     
-                    local prompt = getWashPromptObj()
-                    if prompt then
-                        pcall(function() fireproximityprompt(prompt) end)
-                        task.wait(0.5)
-                        clickDialogOption("clean an item")
-                        task.wait(0.5)
-                    end
-                    
-                    local maxWait = 960
-                    local currentWait = 0
-                    while currentWait < maxWait do
-                        task.wait(0.25)
+                    for attempt = 1, 12 do
+                        local isClaimed = false
                         
-                        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-                        local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
+                        pcall(function()
+                            if claimWash then
+                                if claimWash:IsA("RemoteFunction") then 
+                                    local res = claimWash:InvokeServer(guid)
+                                    if res ~= nil then
+                                        if type(res) == "string" then
+                                            local str = string.lower(res)
+                                            if not string.find(str, "fail") and not string.find(str, "fast") and not string.find(str, "empty") then isClaimed = true end
+                                        else isClaimed = true end
+                                    end
+                                elseif claimWash:IsA("RemoteEvent") then claimWash:FireServer(guid) end
+                            end
+                            
+                            if collectWash then
+                                if collectWash:IsA("RemoteFunction") then 
+                                    local res = collectWash:InvokeServer(guid)
+                                    if res ~= nil then
+                                        if type(res) == "string" then
+                                            local str = string.lower(res)
+                                            if not string.find(str, "fail") and not string.find(str, "fast") and not string.find(str, "empty") then isClaimed = true end
+                                        else isClaimed = true end
+                                    end
+                                elseif collectWash:IsA("RemoteEvent") then collectWash:FireServer(guid) end
+                            end
+                        end)
                         
-                        if washShop and not washShop.Visible then
-                            if prompt then pcall(function() fireproximityprompt(prompt) end) end
-                            task.wait(0.5)
-                            clickDialogOption("clean an item")
-                            task.wait(0.5)
-                        end
-                        
-                        local stillWashing = processWashUI()
-                        forceClaimRemotes(wash, guid)
-                        if not stillWashing then break end
-                        currentWait = currentWait + 1
+                        if isClaimed then break end
+                        task.wait(1.5)
                     end
                     
-                    warn("WASH_SWEEP_START")
-                    for finalSweep = 1, 4 do
-                        task.wait(0.4)
-                        processWashUI()
-                        forceClaimRemotes(wash, guid)
-                    end
-                    
-                    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                    local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-                    local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
-                    if washShop and washShop.Visible then
-                        local closeBtn = washShop:FindFirstChild("HeaderBar") and washShop.HeaderBar:FindFirstChild("CloseButton")
-                        if closeBtn then clickUI(closeBtn) end
-                        task.wait(0.5)
-                    end
-                    
-                    clickDialogOption("maybe later")
-                    
-                    if originalCFrame then 
-                        task.wait(0.5) 
-                        Utils.warpTo(originalCFrame) 
-                    end
+                    if originalCFrame then task.wait(0.3); Utils.warpTo(originalCFrame) end
                     warn("WASH_FINISHED")
                 end
             end
