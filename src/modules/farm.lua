@@ -83,8 +83,11 @@ function FarmModule.init(Config, Utils, WashModule)
             local garagePos = targetPrompt.Parent.Position
             local emptyChecks = 0
             local hasCollected = false
+            local ghostBlacklist = {}
             
             while Config.IsFarming do
+                warn("DIAG_FARM_COL_LOOP_E_" .. tostring(emptyChecks) .. "_C_" .. tostring(hasCollected))
+                
                 if Config.AutoUnload then
                     local currentVehicle = Utils.getCurrentVehicle()
                     if currentVehicle then
@@ -105,23 +108,29 @@ function FarmModule.init(Config, Utils, WashModule)
                 end
 
                 local itemsToCollect = {}
+                local totalSeen = 0
                 for _, item in pairs(carryables:GetChildren()) do
                     local prompt = item:FindFirstChildWhichIsA("ProximityPrompt", true)
                     local basePart = item:FindFirstChildWhichIsA("BasePart", true)
                     if prompt and prompt.Enabled and basePart then
                         local dist = (basePart.Position - garagePos).Magnitude
                         if dist <= 60 then
-                            local weight = 0
-                            local weightValue = item:FindFirstChild("Weight") or item:FindFirstChild("Mass")
-                            if weightValue and (weightValue:IsA("NumberValue") or weightValue:IsA("IntValue")) then 
-                                weight = weightValue.Value
-                            else 
-                                weight = tonumber(item:GetAttribute("Weight")) or tonumber(item:GetAttribute("Mass")) or 0 
+                            totalSeen = totalSeen + 1
+                            if not ghostBlacklist[item] or ghostBlacklist[item] < 5 then
+                                local weight = 0
+                                local weightValue = item:FindFirstChild("Weight") or item:FindFirstChild("Mass")
+                                if weightValue and (weightValue:IsA("NumberValue") or weightValue:IsA("IntValue")) then 
+                                    weight = weightValue.Value
+                                else 
+                                    weight = tonumber(item:GetAttribute("Weight")) or tonumber(item:GetAttribute("Mass")) or 0 
+                                end
+                                table.insert(itemsToCollect, { itemObj = item, prompt = prompt, basePart = basePart, weight = weight })
                             end
-                            table.insert(itemsToCollect, { prompt = prompt, basePart = basePart, weight = weight })
                         end
                     end
                 end
+                
+                warn("DIAG_FARM_ITEMS_SEEN_" .. tostring(totalSeen) .. "_VALID_" .. tostring(#itemsToCollect))
                 
                 if #itemsToCollect > 0 then
                     hasCollected = true
@@ -129,6 +138,9 @@ function FarmModule.init(Config, Utils, WashModule)
                     table.sort(itemsToCollect, function(a, b) return a.weight < b.weight end)
                     for _, data in ipairs(itemsToCollect) do
                         if not Config.IsFarming then break end
+                        
+                        ghostBlacklist[data.itemObj] = (ghostBlacklist[data.itemObj] or 0) + 1
+                        
                         Utils.warpTo(data.basePart.CFrame)
                         task.wait(0.05) 
                         if type(fireproximityprompt) == "function" then 
@@ -138,9 +150,11 @@ function FarmModule.init(Config, Utils, WashModule)
                     end
                 else
                     emptyChecks = emptyChecks + 1
-                    if hasCollected and emptyChecks >= 20 then
+                    if hasCollected and emptyChecks >= 5 then
+                        warn("DIAG_FARM_EXIT_CLEAN")
                         break
-                    elseif not hasCollected and emptyChecks >= 150 then
+                    elseif not hasCollected and emptyChecks >= 100 then
+                        warn("DIAG_FARM_EXIT_TIMEOUT")
                         break
                     end
                     task.wait(0.1) 
