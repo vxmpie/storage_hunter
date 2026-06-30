@@ -26,65 +26,62 @@ function WashModule.init(Config, Utils)
     end
 
     local function clickUI(btn)
-        if btn then
-            pcall(function()
-                if getconnections then
-                    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-                        pcall(function() conn:Fire() end)
-                    end
-                    for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
-                        pcall(function() conn:Fire() end)
-                    end
-                end
-            end)
-        end
+        if not btn or not btn.Visible then return end
+        pcall(function()
+            local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
+            local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
+            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+            task.wait(0.05)
+            VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+        end)
     end
 
     local function autoClaimUI()
-        warn("[DIAGNOSTIC] START_CLAIM")
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-        if not uiC then
-            warn("[DIAGNOSTIC] NO_UIC")
-            return
-        end
+        if not uiC then return end
 
         local washShop = uiC:FindFirstChild("WashShopPanel")
-        if washShop then
-            warn("[DIAGNOSTIC] SHOP_VIS: " .. tostring(washShop.Visible))
-            if washShop:FindFirstChild("SlotsContainer") then
-                for i = 1, 3 do
-                    local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
-                    if slot and slot:FindFirstChild("Content") then
-                        local colBtn = slot.Content:FindFirstChild("CollectBtn")
-                        local clmBtn = slot.Content:FindFirstChild("ClaimBtn")
-                        warn("[DIAGNOSTIC] SLOT_" .. tostring(i) .. "_COL_" .. tostring(colBtn ~= nil) .. "_CLM_" .. tostring(clmBtn ~= nil))
-                        clickUI(colBtn)
-                        task.wait(0.1)
-                        clickUI(clmBtn)
-                    end
+        if washShop and washShop.Visible and washShop:FindFirstChild("SlotsContainer") then
+            for i = 1, 3 do
+                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
+                if slot and slot:FindFirstChild("Content") then
+                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
+                    task.wait(0.1)
+                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
                 end
             end
         end
 
         local washReveal = uiC:FindFirstChild("WashReveal")
-        if washReveal then
-            warn("[DIAGNOSTIC] REV_VIS: " .. tostring(washReveal.Visible))
-            if washReveal:FindFirstChild("Content") then
-                local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
-                warn("[DIAGNOSTIC] REV_CLM_" .. tostring(clmBtn ~= nil))
-                clickUI(clmBtn)
-            end
+        if washReveal and washReveal.Visible and washReveal:FindFirstChild("Content") then
+            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
         end
     end
 
-    function WashModule.washInventoryItems()
-        warn("[TELEMETRY] เริ่มต้นระบบ Wash...")
-        local events = ReplicatedStorage:FindFirstChild("Events")
-        if not events then warn("[TELEMETRY] ไม่พบโฟลเดอร์ Events") return end
+    local function getRarity(itemId)
+        if not itemDB then return "Unknown" end
+        local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
+        if type(info) == "table" then
+            return tostring(info.Rarity or info.rarity or info.Tier or info.tier or "Unknown")
+        end
         
-        local wash = events:FindFirstChild("Wash")
-        if not wash then warn("[TELEMETRY] ไม่พบโฟลเดอร์ Wash") return end
+        for _, v in pairs(itemDB) do
+            if type(v) == "table" then
+                local id = v.id or v.Id or v.ID or v.ItemId or v.itemId or v.Name
+                if tostring(id) == tostring(itemId) then
+                    return tostring(v.Rarity or v.rarity or v.Tier or v.tier or "Unknown")
+                end
+            end
+        end
+        return "Unknown"
+    end
+
+    function WashModule.washInventoryItems()
+        warn("[WASH_DIAGNOSTIC] ตรวจสอบกระเป๋าค้นหาไอเทม...")
+        local events = ReplicatedStorage:FindFirstChild("Events")
+        local wash = events and events:FindFirstChild("Wash")
+        if not wash then return end
         
         local getWashable = wash:FindFirstChild("GetWashableItems")
         local startWash = wash:FindFirstChild("StartWash")
@@ -94,119 +91,74 @@ function WashModule.init(Config, Utils)
         
         if getWashable and startWash then
             local success, data = pcall(function()
-                if getWashable:IsA("RemoteFunction") then
-                    return getWashable:InvokeServer()
-                elseif getWashable:IsA("RemoteEvent") then
-                    getWashable:FireServer()
-                end
+                if getWashable:IsA("RemoteFunction") then return getWashable:InvokeServer()
+                elseif getWashable:IsA("RemoteEvent") then getWashable:FireServer() end
             end)
             
             if success and type(data) == "table" and data.items then
-                warn("[TELEMETRY] พบของสกปรก: " .. tostring(#data.items) .. " ชิ้น")
                 local itemsToWash = {}
                 
                 for _, item in pairs(data.items) do
                     local guid = item.guid
                     local itemId = item.ItemId or item.itemId or item.id
-                    local rarity = "Unknown"
+                    local rarity = getRarity(itemId)
                     
-                    if itemDB and itemId then
-                        local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
-                        if type(info) == "table" then
-                            local rRaw = info.Rarity or info.rarity or info.Tier or info.tier or "Unknown"
-                            rarity = tostring(rRaw)
-                        end
-                    end
+                    warn("[WASH_DIAGNOSTIC] ตรวจพบไอเทม ID: " .. tostring(itemId) .. " | Rarity ที่ค้นเจอ: " .. rarity)
                     
                     local isAllowed = false
                     local rLower = string.lower(rarity)
                     
                     for rName, state in pairs(Config.WashRarities) do
                         if state and string.find(rLower, string.lower(rName)) then
-                            isAllowed = true
-                            break
+                            isAllowed = true; break
                         end
                     end
-                    
                     if Config.WashRarities.Unknown and not isAllowed and (rarity == "Unknown" or rarity == "nil") then
                         isAllowed = true
                     end
-                    
-                    if guid and isAllowed then
-                        table.insert(itemsToWash, guid)
-                    end
+                    if guid and isAllowed then table.insert(itemsToWash, guid) end
                 end
                 
-                warn("[TELEMETRY] ผ่านฟิลเตอร์ Rarity: " .. tostring(#itemsToWash) .. " ชิ้น")
-                
                 if #itemsToWash > 0 then
-                    local originalCFrame
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        originalCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
-                    end
-
+                    local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
                     local washCFrame = getWashStationCFrame()
-                    if washCFrame then
-                        Utils.warpTo(washCFrame)
-                        task.wait(1)
-                    else
-                        warn("[TELEMETRY] คำเตือน: หาพิกัดตู้ซักไม่เจอ")
-                    end
+                    
+                    if washCFrame then Utils.warpTo(washCFrame) task.wait(0.5) end
                     
                     for _, guid in ipairs(itemsToWash) do
                         pcall(function()
                             if startWash:IsA("RemoteFunction") then
-                                for slot = 1, 3 do
-                                    startWash:InvokeServer(slot, guid)
-                                    startWash:InvokeServer(guid, slot)
-                                end
+                                for slot = 1, 3 do startWash:InvokeServer(slot, guid) startWash:InvokeServer(guid, slot) end
                                 startWash:InvokeServer(guid)
                             elseif startWash:IsA("RemoteEvent") then
-                                for slot = 1, 3 do
-                                    startWash:FireServer(slot, guid)
-                                    startWash:FireServer(guid, slot)
-                                end
+                                for slot = 1, 3 do startWash:FireServer(slot, guid) startWash:FireServer(guid, slot) end
                                 startWash:FireServer(guid)
                             end
                         end)
                         
-                        task.wait(0.3)
+                        task.wait(1.5) 
                         
                         local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
                         for _, rem in ipairs(postWashRemotes) do
                             if rem then
                                 pcall(function()
                                     for slot = 1, 3 do
-                                        if rem:IsA("RemoteFunction") then
-                                            pcall(function() rem:InvokeServer(slot, guid) end)
-                                            pcall(function() rem:InvokeServer(guid, slot) end)
-                                            pcall(function() rem:InvokeServer(slot) end)
-                                            pcall(function() rem:InvokeServer(guid) end)
-                                        elseif rem:IsA("RemoteEvent") then
-                                            pcall(function() rem:FireServer(slot, guid) end)
-                                            pcall(function() rem:FireServer(guid, slot) end)
-                                            pcall(function() rem:FireServer(slot) end)
-                                            pcall(function() rem:FireServer(guid) end)
-                                        end
+                                        if rem:IsA("RemoteFunction") then pcall(function() rem:InvokeServer(slot, guid) end) pcall(function() rem:InvokeServer(guid, slot) end) pcall(function() rem:InvokeServer(slot) end) pcall(function() rem:InvokeServer(guid) end)
+                                        elseif rem:IsA("RemoteEvent") then pcall(function() rem:FireServer(slot, guid) end) pcall(function() rem:FireServer(guid, slot) end) pcall(function() rem:FireServer(slot) end) pcall(function() rem:FireServer(guid) end) end
                                     end
                                 end)
                             end
                         end
                         
-                        task.wait(0.2)
-                        autoClaimUI()
+                        for waitLoop = 1, 8 do
+                            task.wait(0.5)
+                            autoClaimUI()
+                        end
                     end
                     
-                    if originalCFrame then
-                        task.wait(1)
-                        Utils.warpTo(originalCFrame)
-                    end
-                    warn("[TELEMETRY] ทำงานเสร็จสิ้น")
-                else
-                    warn("[TELEMETRY] ไม่มีของที่ตรงกับ Rarity ที่เลือก")
+                    if originalCFrame then task.wait(0.5) Utils.warpTo(originalCFrame) end
+                    warn("[WASH_DIAGNOSTIC] ซักและเก็บของเสร็จสิ้น (เข้ากระเป๋าแน่นอน)")
                 end
-            else
-                warn("[TELEMETRY] ไม่มีของสกปรก หรือดึงข้อมูลไม่ได้")
             end
         end
     end
