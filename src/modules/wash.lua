@@ -1,4 +1,6 @@
 local WashModule = {}
+WashModule.OnTimeUpdate = nil
+
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -107,7 +109,9 @@ function WashModule.init(Config, Utils)
                         isBusy = true 
                         if hasTimer and timer.Text ~= "00:00" then
                             local iName = (itemName and itemName.Text) or "Item"
-                            warn("WASH_TIMER_" .. iName .. "_" .. timer.Text)
+                            if WashModule.OnTimeUpdate then
+                                pcall(function() WashModule.OnTimeUpdate(iName, timer.Text) end)
+                            end
                         end
                     end
                     

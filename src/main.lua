@@ -221,6 +221,15 @@ end)
 UI.createHeader(Tab_Automation, "Active Workflows")
 UI.createToggle(Tab_Automation, "Continuous Auto Wash", false, function(s) Config.AutoWash = s end)
 UI.createToggle(Tab_Automation, "Auto Restock Display", false, function(s) Config.AutoSell = s end)
+
+local statusLabel = UI.createLabel(Tab_Automation, "Wash Status: Idle")
+
+WashModule.OnTimeUpdate = function(itemName, timeLeft)
+    if statusLabel and statusLabel.SetText then
+        statusLabel:SetText("Washing: " .. itemName .. " | Time Left: " .. timeLeft)
+    end
+end
+
 UI.createActionButton(Tab_Automation, "FORCE WASH NOW", Color3.fromRGB(40, 100, 180), function()
     if WashModule.washInventoryItems then
         WashModule.washInventoryItems()
@@ -230,6 +239,7 @@ UI.createActionButton(Tab_Automation, "FORCE WASH NOW", Color3.fromRGB(40, 100, 
         warn("[TELEMETRY] บั๊ก: ไม่พบฟังก์ชัน Wash ในโมดูล")
     end
 end)
+
 UI.createHeader(Tab_Teleports, "Locations")
 UI.createActionButton(Tab_Teleports, "Warp to My Plot", Color3.fromRGB(30, 100, 180), Utils.warpToMyPlot)
 UI.createActionButton(Tab_Teleports, "Warp to Unpack Zone", Color3.fromRGB(180, 100, 30), WashModule.warpToUnpack)
