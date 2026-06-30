@@ -37,7 +37,7 @@ function WashModule.init(Config, Utils)
             local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
             if x > 0 and y > 56 then
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.02)
+                task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
             end
         end)
@@ -80,40 +80,6 @@ function WashModule.init(Config, Utils)
         end
     end
 
-    local function getRarity(itemObj)
-        if not itemDB then return "Unknown" end
-        
-        local itemId = itemObj.ItemId or itemObj.itemId or itemObj.id or itemObj.Name or itemObj.TemplateId or itemObj.ItemType
-        
-        if not itemId then
-            for _, v in pairs(itemObj) do
-                if type(v) == "string" or type(v) == "number" then
-                    if itemDB[v] or itemDB[tonumber(v)] or itemDB[tostring(v)] then
-                        itemId = v
-                        break
-                    end
-                end
-            end
-        end
-        
-        if not itemId then return "Unknown" end
-        
-        local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
-        if type(info) == "table" then
-            return tostring(info.Rarity or info.rarity or info.Tier or info.tier or "Unknown")
-        end
-        
-        for _, v in pairs(itemDB) do
-            if type(v) == "table" then
-                local id = v.id or v.Id or v.ID or v.ItemId or v.itemId or v.Name
-                if tostring(id) == tostring(itemId) then
-                    return tostring(v.Rarity or v.rarity or v.Tier or v.tier or "Unknown")
-                end
-            end
-        end
-        return "Unknown"
-    end
-
     function WashModule.washInventoryItems()
         local events = ReplicatedStorage:FindFirstChild("Events")
         local wash = events and events:FindFirstChild("Wash")
@@ -135,37 +101,33 @@ function WashModule.init(Config, Utils)
                 local itemsToWash = {}
                 
                 for _, item in pairs(data.items) do
-                    local guid = item.guid
-                    local rarity = getRarity(item)
-                    
-                    local isAllowed = false
-                    local rLower = string.lower(rarity)
-                    
-                    for rName, state in pairs(Config.WashRarities) do
-                        if state and string.find(rLower, string.lower(rName)) then
-                            isAllowed = true
-                            break
-                        end
+                    if item.guid then
+                        table.insert(itemsToWash, item.guid)
                     end
-                    if Config.WashRarities.Unknown and not isAllowed and (rarity == "Unknown" or rarity == "nil") then
-                        isAllowed = true
-                    end
-                    if guid and isAllowed then table.insert(itemsToWash, guid) end
                 end
                 
                 if #itemsToWash > 0 then
                     local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
                     local washCFrame = getWashStationCFrame()
                     
-                    if washCFrame then Utils.warpTo(washCFrame) task.wait(0.5) end
+                    if washCFrame then 
+                        Utils.warpTo(washCFrame) 
+                        task.wait(0.5) 
+                    end
                     
                     for _, guid in ipairs(itemsToWash) do
                         pcall(function()
                             if startWash:IsA("RemoteFunction") then
-                                for slot = 1, 3 do startWash:InvokeServer(slot, guid) startWash:InvokeServer(guid, slot) end
+                                for slot = 1, 3 do 
+                                    startWash:InvokeServer(slot, guid) 
+                                    startWash:InvokeServer(guid, slot) 
+                                end
                                 startWash:InvokeServer(guid)
                             elseif startWash:IsA("RemoteEvent") then
-                                for slot = 1, 3 do startWash:FireServer(slot, guid) startWash:FireServer(guid, slot) end
+                                for slot = 1, 3 do 
+                                    startWash:FireServer(slot, guid) 
+                                    startWash:FireServer(guid, slot) 
+                                end
                                 startWash:FireServer(guid)
                             end
                         end)
@@ -177,25 +139,37 @@ function WashModule.init(Config, Utils)
                             if rem then
                                 pcall(function()
                                     for slot = 1, 3 do
-                                        if rem:IsA("RemoteFunction") then pcall(function() rem:InvokeServer(slot, guid) end) pcall(function() rem:InvokeServer(guid, slot) end) pcall(function() rem:InvokeServer(slot) end) pcall(function() rem:InvokeServer(guid) end)
-                                        elseif rem:IsA("RemoteEvent") then pcall(function() rem:FireServer(slot, guid) end) pcall(function() rem:FireServer(guid, slot) end) pcall(function() rem:FireServer(slot) end) pcall(function() rem:FireServer(guid) end) end
+                                        if rem:IsA("RemoteFunction") then 
+                                            pcall(function() rem:InvokeServer(slot, guid) end) 
+                                            pcall(function() rem:InvokeServer(guid, slot) end) 
+                                            pcall(function() rem:InvokeServer(slot) end) 
+                                            pcall(function() rem:InvokeServer(guid) end)
+                                        elseif rem:IsA("RemoteEvent") then 
+                                            pcall(function() rem:FireServer(slot, guid) end) 
+                                            pcall(function() rem:FireServer(guid, slot) end) 
+                                            pcall(function() rem:FireServer(slot) end) 
+                                            pcall(function() rem:FireServer(guid) end) 
+                                        end
                                     end
                                 end)
                             end
                         end
                         
-                        for waitLoop = 1, 4 do
+                        for waitLoop = 1, 6 do
                             task.wait(0.5)
                             autoClaimUI()
                         end
                     end
                     
-                    for finalSweep = 1, 10 do
+                    for finalSweep = 1, 15 do
                         task.wait(0.5)
                         autoClaimUI()
                     end
                     
-                    if originalCFrame then task.wait(0.5) Utils.warpTo(originalCFrame) end
+                    if originalCFrame then 
+                        task.wait(0.5) 
+                        Utils.warpTo(originalCFrame) 
+                    end
                 end
             end
         end
