@@ -30,12 +30,10 @@ function WashModule.init(Config, Utils)
             pcall(function()
                 if getconnections then
                     for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-                        if type(conn.Function) == "function" then pcall(conn.Function)
-                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
+                        conn:Fire()
                     end
                     for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
-                        if type(conn.Function) == "function" then pcall(conn.Function)
-                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
+                        conn:Fire()
                     end
                 end
             end)
