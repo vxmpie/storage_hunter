@@ -54,6 +54,33 @@ function WashModule.init(Config, Utils)
         end)
     end
 
+    local function clickDialogOption(targetStr)
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not pGui then return false end
+        
+        local clicked = false
+        for _, obj in pairs(pGui:GetDescendants()) do
+            if obj:IsA("TextButton") and obj.AbsoluteSize.X > 0 and obj.AbsoluteSize.Y > 0 then
+                local textStr = string.lower(obj.Text)
+                if textStr == "" or textStr == " " then
+                    for _, child in pairs(obj:GetDescendants()) do
+                        if child:IsA("TextLabel") or child:IsA("TextBox") then
+                            if child.Text and child.Text ~= "" then
+                                textStr = textStr .. " " .. string.lower(child.Text)
+                            end
+                        end
+                    end
+                end
+                
+                if string.find(textStr, targetStr) then
+                    clickUI(obj)
+                    clicked = true
+                end
+            end
+        end
+        return clicked
+    end
+
     local function processWashUI()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
@@ -179,6 +206,8 @@ function WashModule.init(Config, Utils)
                         if prompt then
                             pcall(function() fireproximityprompt(prompt) end)
                             task.wait(1)
+                            clickDialogOption("clean an item")
+                            task.wait(1)
                         end
                         
                         local maxWait = 240
@@ -192,6 +221,8 @@ function WashModule.init(Config, Utils)
                             
                             if washShop and not washShop.Visible then
                                 if prompt then pcall(function() fireproximityprompt(prompt) end) end
+                                task.wait(1)
+                                clickDialogOption("clean an item")
                                 task.wait(1)
                             end
                             
@@ -216,6 +247,8 @@ function WashModule.init(Config, Utils)
                             if closeBtn then clickUI(closeBtn) end
                             task.wait(0.5)
                         end
+                        
+                        clickDialogOption("maybe later")
                     end
                     
                     if originalCFrame then task.wait(1); Utils.warpTo(originalCFrame) end
