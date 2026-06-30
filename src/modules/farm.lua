@@ -150,7 +150,7 @@ function FarmModule.init(Config, Utils, WashModule)
                     end
                 else
                     emptyChecks = emptyChecks + 1
-                    if hasCollected and emptyChecks >= 5 then
+                    if hasCollected and emptyChecks >= 2 then
                         warn("DIAG_FARM_EXIT_CLEAN")
                         break
                     elseif not hasCollected and emptyChecks >= 100 then
