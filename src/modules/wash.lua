@@ -33,9 +33,11 @@ function WashModule.init(Config, Utils)
                 pcall(function() firesignal(btn.MouseButton1Down) end)
             end
             
-            local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
-            local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
-            if x > 0 and y > 56 then
+            local absPos = btn.AbsolutePosition
+            local absSize = btn.AbsoluteSize
+            if absSize.X > 0 and absSize.Y > 0 then
+                local x = absPos.X + (absSize.X / 2)
+                local y = absPos.Y + (absSize.Y / 2) + 56
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
                 task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
@@ -61,13 +63,10 @@ function WashModule.init(Config, Utils)
                     local content = slot.Content
                     local colBtn = content:FindFirstChild("CollectBtn")
                     local clmBtn = content:FindFirstChild("ClaimBtn")
-                    local timer = content:FindFirstChild("TimerText")
-                    local itemName = content:FindFirstChild("ItemName")
+                    local spdBtn = content:FindFirstChild("SpeedUpBtn")
                     
-                    if timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "00:00" and timer.Text ~= "0s" then
+                    if spdBtn and spdBtn.Visible then
                         isBusy = true
-                        local iName = (itemName and itemName.Text) or "Item"
-                        warn("[WASH_TIMER] " .. iName .. " (Slot " .. tostring(i) .. ") Time Left: " .. timer.Text)
                     end
                     
                     if colBtn and colBtn.Visible then clickUI(colBtn) end
@@ -94,15 +93,13 @@ function WashModule.init(Config, Utils)
     end
 
     function WashModule.washInventoryItems()
+        warn("WASH_EXECUTE_START")
         local events = ReplicatedStorage:FindFirstChild("Events")
         local wash = events and events:FindFirstChild("Wash")
         if not wash then return end
         
         local getWashable = wash:FindFirstChild("GetWashableItems")
         local startWash = wash:FindFirstChild("StartWash")
-        local speedUpWash = wash:FindFirstChild("SpeedUpWash")
-        local collectWash = wash:FindFirstChild("CollectWash")
-        local claimWashedItem = wash:FindFirstChild("ClaimWashedItem")
         
         if getWashable and startWash then
             local success, data = pcall(function()
@@ -120,12 +117,13 @@ function WashModule.init(Config, Utils)
                 end
                 
                 if #itemsToWash > 0 then
+                    warn("WASH_ITEMS_FOUND_" .. tostring(#itemsToWash))
                     local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
                     local washCFrame = getWashStationCFrame()
                     
                     if washCFrame then 
                         Utils.warpTo(washCFrame) 
-                        task.wait(0.5) 
+                        task.wait(1) 
                     end
                     
                     for _, guid in ipairs(itemsToWash) do
@@ -147,28 +145,7 @@ function WashModule.init(Config, Utils)
                         
                         task.wait(1.5) 
                         
-                        local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
-                        for _, rem in ipairs(postWashRemotes) do
-                            if rem then
-                                pcall(function()
-                                    for slot = 1, 3 do
-                                        if rem:IsA("RemoteFunction") then 
-                                            pcall(function() rem:InvokeServer(slot, guid) end) 
-                                            pcall(function() rem:InvokeServer(guid, slot) end) 
-                                            pcall(function() rem:InvokeServer(slot) end) 
-                                            pcall(function() rem:InvokeServer(guid) end)
-                                        elseif rem:IsA("RemoteEvent") then 
-                                            pcall(function() rem:FireServer(slot, guid) end) 
-                                            pcall(function() rem:FireServer(guid, slot) end) 
-                                            pcall(function() rem:FireServer(slot) end) 
-                                            pcall(function() rem:FireServer(guid) end) 
-                                        end
-                                    end
-                                end)
-                            end
-                        end
-                        
-                        local maxWait = 180
+                        local maxWait = 240
                         local currentWait = 0
                         while currentWait < maxWait do
                             task.wait(1)
@@ -176,17 +153,19 @@ function WashModule.init(Config, Utils)
                             if not stillWashing then break end
                             currentWait = currentWait + 1
                         end
-                    end
-                    
-                    for finalSweep = 1, 5 do
-                        task.wait(0.5)
-                        autoClaimUI()
+                        
+                        warn("WASH_SWEEP_START")
+                        for finalSweep = 1, 8 do
+                            task.wait(0.5)
+                            autoClaimUI()
+                        end
                     end
                     
                     if originalCFrame then 
-                        task.wait(0.5) 
+                        task.wait(1) 
                         Utils.warpTo(originalCFrame) 
                     end
+                    warn("WASH_FINISHED")
                 end
             end
         end
