@@ -85,11 +85,10 @@ function FarmModule.init(Config, Utils, WashModule)
             warn("DIAG_FARM_PRE_COL_" .. tostring(Config.IsFarming))
             
             local garagePos = targetPrompt.Parent.Position
-            local maxIdleChecks = 2 
+            local maxIdleChecks = 150 
             local idleChecks = 0
             
             while Config.IsFarming do
-                warn("DIAG_FARM_COL_IDLE_" .. tostring(idleChecks))
                 if Config.AutoUnload then
                     local currentVehicle = Utils.getCurrentVehicle()
                     if currentVehicle then
@@ -129,18 +128,24 @@ function FarmModule.init(Config, Utils, WashModule)
                 end
                 
                 if #itemsToCollect > 0 then
-                    idleChecks = 0
+                    idleChecks = 0 
                     table.sort(itemsToCollect, function(a, b) return a.weight < b.weight end)
                     for _, data in ipairs(itemsToCollect) do
                         if not Config.IsFarming then break end
                         Utils.warpTo(data.basePart.CFrame)
-                        task.wait(0.03) 
-                        if fireproximityprompt then fireproximityprompt(data.prompt) end
-                        task.wait(0.03) 
+                        task.wait(0.05) 
+                        
+                        if type(fireproximityprompt) == "function" then 
+                            pcall(function() fireproximityprompt(data.prompt) end) 
+                        end
+                        task.wait(0.05) 
                     end
                 else
                     idleChecks = idleChecks + 1
-                    if idleChecks >= maxIdleChecks then break end
+                    if idleChecks >= maxIdleChecks then 
+                        warn("[FARM_DIAGNOSTIC] หมดเวลารอไอเทมเกิด เซิร์ฟเวอร์ไม่ส่งออบเจกต์มา ตัดจบรอบนี้")
+                        break 
+                    end
                     task.wait(0.1) 
                 end
             end
