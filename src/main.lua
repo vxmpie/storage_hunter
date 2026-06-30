@@ -206,7 +206,7 @@ end)
 UI.createHeader(Tab_Automation, "Active Workflows")
 UI.createToggle(Tab_Automation, "Continuous Auto Wash", false, function(s) Config.AutoWash = s end)
 UI.createToggle(Tab_Automation, "Auto Restock Display", false, function(s) Config.AutoSell = s end)
-
+UI.createActionButton(Tab_Automation, "FORCE WASH NOW", Color3.fromRGB(40, 100, 180), function() WashModule.washInventoryItems() end)
 UI.createHeader(Tab_Automation, "Wash Rarity Filters")
 UI.createToggle(Tab_Automation, "Wash Junk", false, function(s) Config.WashRarities.Junk = s end)
 UI.createToggle(Tab_Automation, "Wash Uncommon", false, function(s) Config.WashRarities.Uncommon = s end)

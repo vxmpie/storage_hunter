@@ -1,292 +1,270 @@
-local githubUser = "vxmpie"
-local repoBase = "https://raw.githubusercontent.com/" .. githubUser .. "/storage_hunter/main/src/"
-
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
+local WashModule = {}
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local heartbeatConnection = nil
-
-local function loadModule(fileName)
-    local url = repoBase .. fileName
-    local success, result = pcall(function() return game:HttpGet(url) end)
-    
-    if not success or result == "404: Not Found" then
-        warn("MODULE_FETCH_FAIL: " .. fileName)
-        return nil
-    end
-    
-    local func, err = loadstring(result)
-    if not func then
-        warn("MODULE_SYNTAX_ERROR: " .. fileName .. " | " .. tostring(err))
-        return nil
-    end
-    
-    local ok, ret = pcall(func)
-    if not ok then
-        warn("MODULE_RUNTIME_ERROR: " .. fileName .. " | " .. tostring(ret))
-        return nil
-    end
-    return ret
-end
-
-local Config = loadModule("config.lua")
-local Utils = loadModule("utils.lua")
-local UI = loadModule("ui/tabs.lua")
-local WashModule = loadModule("modules/wash.lua")
-local FarmModule = loadModule("modules/farm.lua")
-
-if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("GENESIS_HALTED: โหลดโมดูลไม่ครบ")
-    return
-end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GenesisUI_Pro"
-ScreenGui.ResetOnSpawn = false
-pcall(function() ScreenGui.Parent = CoreGui end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
-
-local FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Size = UDim2.new(0, 50, 0, 50)
-FloatingBtn.Position = UDim2.new(1, -70, 0.5, -25)
-FloatingBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-FloatingBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
-FloatingBtn.Text = "G"
-FloatingBtn.Font = Enum.Font.GothamBlack
-FloatingBtn.TextSize = 30
-FloatingBtn.Parent = ScreenGui
-FloatingBtn.Draggable = true
-Instance.new("UICorner", FloatingBtn).CornerRadius = UDim.new(1, 0)
-local FloatStroke = Instance.new("UIStroke", FloatingBtn)
-FloatStroke.Color = Color3.fromRGB(255, 60, 60)
-FloatStroke.Thickness = 2
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 580, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -290, 0.5, -220)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(35, 35, 40)
-MainStroke.Thickness = 1
-
-FloatingBtn.MouseButton1Click:Connect(function() 
-    MainFrame.Visible = not MainFrame.Visible 
+local itemDB
+pcall(function()
+    itemDB = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Items"))
 end)
 
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 160, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = MainFrame
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
-
-local SidebarFix = Instance.new("Frame")
-SidebarFix.Size = UDim2.new(0, 10, 1, 0)
-SidebarFix.Position = UDim2.new(1, -10, 0, 0)
-SidebarFix.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-SidebarFix.BorderSizePixel = 0
-SidebarFix.Parent = Sidebar
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 70)
-Title.BackgroundTransparency = 1
-Title.Text = "GENESIS"
-Title.TextColor3 = Color3.fromRGB(255, 60, 60)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 24
-Title.Parent = Sidebar
-
-local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -160, 1, 0)
-ContentArea.Position = UDim2.new(0, 160, 0, 0)
-ContentArea.BackgroundTransparency = 1
-ContentArea.Parent = MainFrame
-
-local Tabs = {}
-local Tab_Farming = UI.createTab(Sidebar, ContentArea, Tabs, "Farming", 0)
-local Tab_Automation = UI.createTab(Sidebar, ContentArea, Tabs, "Automation", 1)
-local Tab_Teleports = UI.createTab(Sidebar, ContentArea, Tabs, "Teleports", 2)
-local Tab_Misc = UI.createTab(Sidebar, ContentArea, Tabs, "Misc", 3)
-Tabs[1].scroll.Visible = true 
-Tabs[1].btn.TextColor3 = Color3.fromRGB(255, 60, 60)
-Tabs[1].btn.BackgroundColor3 = Color3.fromRGB(35, 25, 30)
-Tabs[1].stroke.Color = Color3.fromRGB(255, 60, 60)
-
-UI.createHeader(Tab_Farming, "Farm Config")
-UI.createToggle(Tab_Farming, "Auto Bid", false, function(s) Config.AutoBid = s end)
-UI.createToggle(Tab_Farming, "Auto Unload", false, function(s) Config.AutoUnload = s end)
-
-UI.createInput(Tab_Farming, "Farm Loops", "0 = Infinite", function(val)
-    local num = tonumber(val)
-    if num then Config.FarmLoops = num else Config.FarmLoops = 0 end
-end)
-
-UI.createHeader(Tab_Farming, "Target Location")
-local farmOptions = {"Junk Yard", "Back Alley", "Farm Yard", "Ship Yard"}
-local farmButtons = {}
-for _, place in ipairs(farmOptions) do
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 32)
-    frame.BackgroundTransparency = 1
-    frame.Parent = Tab_Farming
-
-    local box = Instance.new("TextButton")
-    box.Size = UDim2.new(0, 20, 0, 20)
-    box.Position = UDim2.new(0, 5, 0.5, -10)
-    box.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    box.Text = ""
-    box.Parent = frame
-    Instance.new("UICorner", box).CornerRadius = UDim.new(1, 0)
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -35, 1, 0)
-    lbl.Position = UDim2.new(0, 35, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = place
-    lbl.TextColor3 = Color3.fromRGB(200, 200, 205)
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-
-    table.insert(farmButtons, {box = box, name = place})
-
-    box.MouseButton1Click:Connect(function()
-        for _, b in ipairs(farmButtons) do 
-            b.box.BackgroundColor3 = Color3.fromRGB(45, 45, 55) 
+function WashModule.init(Config, Utils)
+    local function getWashStationCFrame()
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                local name = string.lower(obj.Name)
+                local action = string.lower(obj.ActionText)
+                if string.find(name, "wash") or string.find(action, "wash") or string.find(name, "clean") or string.find(action, "clean") then
+                    if obj.Parent and obj.Parent:IsA("BasePart") then
+                        return obj.Parent.CFrame
+                    end
+                end
+            end
         end
-        box.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        Config.SelectedFarm = place == "Farm Yard" and "Farmyard" or (place == "Ship Yard" and "Shipyard" or place)
+        return nil
+    end
+
+    local function clickUI(btn)
+        if btn then
+            pcall(function()
+                if getconnections then
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+                        if type(conn.Function) == "function" then pcall(conn.Function)
+                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
+                    end
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
+                        if type(conn.Function) == "function" then pcall(conn.Function)
+                        elseif type(conn.Fire) == "function" then pcall(function() conn:Fire() end) end
+                    end
+                end
+            end)
+        end
+    end
+
+    local function autoClaimUI()
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+        if not uiC then return end
+
+        local washShop = uiC:FindFirstChild("WashShopPanel")
+        if washShop and washShop:FindFirstChild("SlotsContainer") then
+            for i = 1, 3 do
+                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
+                if slot and slot:FindFirstChild("Content") then
+                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
+                    task.wait(0.1)
+                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
+                end
+            end
+        end
+
+        local washReveal = uiC:FindFirstChild("WashReveal")
+        if washReveal and washReveal:FindFirstChild("Content") then
+            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
+        end
+    end
+
+function WashModule.washInventoryItems()
+        warn("[TELEMETRY] เริ่มต้นคำสั่ง Wash...")
+        local events = ReplicatedStorage:FindFirstChild("Events")
+        if not events then warn("[TELEMETRY] พัง: หาโฟลเดอร์ Events ไม่เจอ") return end
+        
+        local wash = events:FindFirstChild("Wash")
+        if not wash then warn("[TELEMETRY] พัง: หาโฟลเดอร์ Wash ไม่เจอ") return end
+        
+        local getWashable = wash:FindFirstChild("GetWashableItems")
+        local startWash = wash:FindFirstChild("StartWash")
+        local speedUpWash = wash:FindFirstChild("SpeedUpWash")
+        local collectWash = wash:FindFirstChild("CollectWash")
+        local claimWashedItem = wash:FindFirstChild("ClaimWashedItem")
+        
+        if getWashable and startWash then
+            local success, data = pcall(function()
+                if getWashable:IsA("RemoteFunction") then
+                    return getWashable:InvokeServer()
+                elseif getWashable:IsA("RemoteEvent") then
+                    getWashable:FireServer()
+                end
+            end)
+            
+            if success and type(data) == "table" and data.items then
+                warn("[TELEMETRY] เจอไอเทมสกปรกในกระเป๋า: " .. tostring(#data.items) .. " ชิ้น")
+                local itemsToWash = {}
+                
+                for _, item in pairs(data.items) do
+                    local guid = item.guid
+                    local itemId = item.ItemId or item.itemId or item.id
+                    local rarity = "Unknown"
+                    
+                    if itemDB and itemId then
+                        local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
+                        if type(info) == "table" then
+                            local rRaw = info.Rarity or info.rarity or info.Tier or info.tier or "Unknown"
+                            rarity = tostring(rRaw)
+                        end
+                    end
+                    
+                    warn("[TELEMETRY] เช็คของ ID: " .. tostring(itemId) .. " | Rarity ที่ระบบเห็น: " .. rarity)
+                    
+                    local isAllowed = false
+                    local rLower = string.lower(rarity)
+                    
+                    for rName, state in pairs(Config.WashRarities) do
+                        if state and string.find(rLower, string.lower(rName)) then
+                            isAllowed = true
+                            break
+                        end
+                    end
+                    
+                    if Config.WashRarities.Unknown and not isAllowed and (rarity == "Unknown" or rarity == "nil") then
+                        isAllowed = true
+                    end
+                    
+                    if guid and isAllowed then
+                        table.insert(itemsToWash, guid)
+                    end
+                end
+                
+                warn("[TELEMETRY] จำนวนของที่ผ่านเงื่อนไข (ตรงกับที่ติ๊กไว้): " .. tostring(#itemsToWash) .. " ชิ้น")
+                
+                if #itemsToWash > 0 then
+                    local originalCFrame
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        originalCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+                    end
+
+                    local washCFrame = getWashStationCFrame()
+                    if washCFrame then
+                        Utils.warpTo(washCFrame)
+                        task.wait(1)
+                    else
+                        warn("[TELEMETRY] พัง: หาพิกัดตู้ซักไม่เจอ")
+                    end
+                    
+                    for _, guid in ipairs(itemsToWash) do
+                        pcall(function()
+                            if startWash:IsA("RemoteFunction") then
+                                for slot = 1, 3 do
+                                    startWash:InvokeServer(slot, guid)
+                                    startWash:InvokeServer(guid, slot)
+                                end
+                                startWash:InvokeServer(guid)
+                            elseif startWash:IsA("RemoteEvent") then
+                                for slot = 1, 3 do
+                                    startWash:FireServer(slot, guid)
+                                    startWash:FireServer(guid, slot)
+                                end
+                                startWash:FireServer(guid)
+                            end
+                        end)
+                        
+                        task.wait(0.3)
+                        
+                        local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
+                        for _, rem in ipairs(postWashRemotes) do
+                            if rem then
+                                pcall(function()
+                                    for slot = 1, 3 do
+                                        if rem:IsA("RemoteFunction") then
+                                            pcall(function() rem:InvokeServer(slot, guid) end)
+                                            pcall(function() rem:InvokeServer(guid, slot) end)
+                                            pcall(function() rem:InvokeServer(slot) end)
+                                            pcall(function() rem:InvokeServer(guid) end)
+                                        elseif rem:IsA("RemoteEvent") then
+                                            pcall(function() rem:FireServer(slot, guid) end)
+                                            pcall(function() rem:FireServer(guid, slot) end)
+                                            pcall(function() rem:FireServer(slot) end)
+                                            pcall(function() rem:FireServer(guid) end)
+                                        end
+                                    end
+                                end)
+                            end
+                        end
+                        
+                        task.wait(0.2)
+                        autoClaimUI()
+                    end
+                    
+                    if originalCFrame then
+                        task.wait(1)
+                        Utils.warpTo(originalCFrame)
+                    end
+                else
+                    warn("[TELEMETRY] จบการทำงาน: มีของสกปรกนะ แต่ไม่มีอันไหนตรงกับระดับ Rarity ที่นายตั้งไว้เลย")
+                end
+            else
+                warn("[TELEMETRY] จบการทำงาน: ดึงข้อมูลไม่สำเร็จ หรือตอนนี้ไม่มีของสกปรกในตัวเลย")
+            end
+        end
+    end
+
+    function WashModule.warpToUnpack()
+        local uz = Workspace:FindFirstChild("UnpackZone")
+        if not uz then return end
+        
+        local pad = uz:FindFirstChild("Pad")
+        if not pad then return end
+
+        local targetCFrame = pad.CFrame + Vector3.new(0, 4, 0)
+        local char = LocalPlayer.Character
+        local humanoid = char and char:FindFirstChild("Humanoid")
+
+        if humanoid and humanoid.SeatPart then
+            local vehicle = humanoid.SeatPart:FindFirstAncestorWhichIsA("Model")
+            if vehicle then 
+                vehicle:PivotTo(targetCFrame) 
+            else 
+                humanoid.SeatPart.CFrame = targetCFrame 
+            end
+        else
+            Utils.warpTo(pad.CFrame)
+        end
+        
+        task.wait(1)
+        
+        local vehiclesEvents = ReplicatedStorage:FindFirstChild("Events")
+        if not vehiclesEvents then return end
+        
+        local vehicleFolder = vehiclesEvents:FindFirstChild("Vehicles")
+        if not vehicleFolder then return end
+        
+        local getOwnedVehicles = vehicleFolder:FindFirstChild("GetOwnedVehicles")
+        local getVehicleItems = vehicleFolder:FindFirstChild("GetVehicleItems")
+        local transferItems = vehicleFolder:FindFirstChild("TransferVehicleItemsToInventory")
+        
+        if getOwnedVehicles and getVehicleItems and transferItems then
+            local successV, resultV = pcall(function() return getOwnedVehicles:InvokeServer() end)
+            if successV and type(resultV) == "table" and resultV.equippedGuid then
+                local vehicleId = tostring(resultV.equippedGuid)
+                local successI, resultI = pcall(function() return getVehicleItems:InvokeServer(vehicleId) end)
+                
+                if successI and type(resultI) == "table" then
+                    local itemsToUnload = {}
+                    for itemGuid, _ in pairs(resultI) do 
+                        table.insert(itemsToUnload, itemGuid) 
+                    end
+                    
+                    if #itemsToUnload > 0 then
+                        transferItems:FireServer(itemsToUnload)
+                        task.wait(0.5)
+                        
+                        if humanoid and humanoid.Sit then 
+                            humanoid.Sit = false 
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    task.spawn(function()
+        while task.wait(5) do
+            if Config.AutoWash then
+                WashModule.washInventoryItems()
+            end
+        end
     end)
 end
 
-local gapFarming = Instance.new("Frame")
-gapFarming.Size = UDim2.new(1, 0, 0, 10)
-gapFarming.BackgroundTransparency = 1
-gapFarming.Parent = Tab_Farming
-
-local StartFarmBtn = UI.createActionButton(Tab_Farming, "START AUTO FARM", Color3.fromRGB(40, 160, 80), function() end)
-StartFarmBtn.MouseButton1Click:Connect(function()
-    if Config.SelectedFarm == "" then return end
-    Config.IsFarming = not Config.IsFarming
-    if Config.IsFarming then
-        StartFarmBtn.Text = "STOP AUTO FARM"
-        StartFarmBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        task.spawn(function()
-            local loopCount = 0
-            while Config.IsFarming do
-                if Config.FarmLoops > 0 and loopCount >= Config.FarmLoops then
-                    Config.IsFarming = false
-                    StartFarmBtn.Text = "START AUTO FARM"
-                    StartFarmBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
-                    break
-                end
-                loopCount = loopCount + 1
-                FarmModule.startAuctionAndCollect(Config.SelectedFarm)
-                task.wait(1)
-            end
-        end)
-    else
-        StartFarmBtn.Text = "START AUTO FARM"
-        StartFarmBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
-    end
-end)
-
-UI.createHeader(Tab_Automation, "Active Workflows")
-UI.createToggle(Tab_Automation, "Continuous Auto Wash", false, function(s) Config.AutoWash = s end)
-UI.createToggle(Tab_Automation, "Auto Restock Display", false, function(s) Config.AutoSell = s end)
-UI.createActionButton(Tab_Automation, "FORCE WASH NOW", Color3.fromRGB(40, 100, 180), function() WashModule.washInventoryItems() end)
-
-UI.createHeader(Tab_Automation, "Wash Rarity Filters")
-UI.createToggle(Tab_Automation, "Wash Junk", false, function(s) Config.WashRarities.Junk = s end)
-UI.createToggle(Tab_Automation, "Wash Uncommon", false, function(s) Config.WashRarities.Uncommon = s end)
-UI.createToggle(Tab_Automation, "Wash Rare", false, function(s) Config.WashRarities.Rare = s end)
-UI.createToggle(Tab_Automation, "Wash Epic", false, function(s) Config.WashRarities.Epic = s end)
-UI.createToggle(Tab_Automation, "Wash Legendary", false, function(s) Config.WashRarities.Legendary = s end)
-UI.createToggle(Tab_Automation, "Wash Mythical", false, function(s) Config.WashRarities.Mythical = s end)
-UI.createToggle(Tab_Automation, "Wash Unknown", false, function(s) Config.WashRarities.Unknown = s end)
-
-UI.createHeader(Tab_Teleports, "Locations")
-UI.createActionButton(Tab_Teleports, "Warp to My Plot", Color3.fromRGB(30, 100, 180), Utils.warpToMyPlot)
-UI.createActionButton(Tab_Teleports, "Warp to Unpack Zone", Color3.fromRGB(180, 100, 30), WashModule.warpToUnpack)
-
-local function warpToArea(areaName)
-    local targetArea = Workspace.Areas:FindFirstChild(areaName)
-    if targetArea and targetArea:FindFirstChild("AreaBoundary") then 
-        Utils.warpTo(targetArea.AreaBoundary.CFrame) 
-    end
-end
-
-UI.createActionButton(Tab_Teleports, "Warp to Junk Yard", Color3.fromRGB(45, 45, 55), function() warpToArea("Junk Yard") end)
-UI.createActionButton(Tab_Teleports, "Warp to Back Alley", Color3.fromRGB(45, 45, 55), function() warpToArea("Back Alley") end)
-UI.createActionButton(Tab_Teleports, "Warp to Farm Yard", Color3.fromRGB(45, 45, 55), function() warpToArea("Farmyard") end)
-UI.createActionButton(Tab_Teleports, "Warp to Ship Yard", Color3.fromRGB(45, 45, 55), function() warpToArea("Shipyard") end)
-UI.createActionButton(Tab_Teleports, "Warp to Shopping Mall", Color3.fromRGB(45, 45, 55), function() warpToArea("Shopping Mall") end)
-
-UI.createHeader(Tab_Misc, "Utilities")
-UI.createActionButton(Tab_Misc, "Spawn Flatbed", Color3.fromRGB(45, 45, 55), function()
-    local sp = Workspace:FindFirstChild("_VehicleShop") and Workspace._VehicleShop.VehicleSpawns:FindFirstChild("Spawn2")
-    if sp and sp:FindFirstChild("Flatbed") then
-        local ds = sp.Flatbed:FindFirstChild("DriveSeat")
-        if ds and ds.PromptLocation then
-            Utils.warpTo(ds.CFrame)
-            task.wait(0.5)
-            fireproximityprompt(ds.PromptLocation.VehiclePrompt)
-        end
-    end
-end)
-
-local gapMisc = Instance.new("Frame")
-gapMisc.Size = UDim2.new(1, 0, 0, 10)
-gapMisc.BackgroundTransparency = 1
-gapMisc.Parent = Tab_Misc
-
-UI.createActionButton(Tab_Misc, "UNLOAD SCRIPT", Color3.fromRGB(150, 40, 40), function()
-    Config.IsFarming = false
-    Config.AutoBid = false
-    Config.AutoUnload = false
-    Config.AutoWash = false
-    Config.AutoSell = false
-    if heartbeatConnection then
-        heartbeatConnection:Disconnect()
-    end
-    if ScreenGui then
-        ScreenGui:Destroy()
-    end
-end)
-
-heartbeatConnection = RunService.Heartbeat:Connect(function()
-    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if pGui and pGui:FindFirstChild("UIControllerGui") then
-        if Config.AutoBid and pGui.UIControllerGui:FindFirstChild("AuctionBiddingContainer") and pGui.UIControllerGui.AuctionBiddingContainer.Visible then
-            local ev = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Auction")
-            if ev and ev:FindFirstChild("Bid") then ev.Bid:FireServer() end
-        end
-        local outer = pGui.UIControllerGui:FindFirstChild("NewDiscoveryOuter")
-        if outer and outer.Visible then
-            local popup = outer:FindFirstChild("DiscoveryPopup")
-            local btn = popup and popup:FindFirstChild("RepairContinueButton")
-            if btn and btn.AbsolutePosition then
-                outer.Visible = false
-                pcall(function()
-                    local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
-                    local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
-                    VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                    task.wait(0.01)
-                    VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                end)
-            end
-        end
-    end
-end)
+return WashModule
