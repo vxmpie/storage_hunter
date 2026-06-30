@@ -30,6 +30,7 @@ function WashModule.init(Config, Utils)
         local startWash = wash:FindFirstChild("StartWash")
         local claimWash = wash:FindFirstChild("ClaimWashedItem")
         local collectWash = wash:FindFirstChild("CollectWash")
+        local speedUpWash = wash:FindFirstChild("SpeedUpWash")
         
         if getWashable and startWash then
             local success, data = pcall(function()
@@ -53,43 +54,68 @@ function WashModule.init(Config, Utils)
                     local guid = itemsToWash[1]
                     
                     pcall(function()
-                        if startWash:IsA("RemoteFunction") then startWash:InvokeServer(guid)
-                        elseif startWash:IsA("RemoteEvent") then startWash:FireServer(guid) end
+                        for slot = 1, 3 do
+                            if startWash:IsA("RemoteFunction") then 
+                                pcall(function() startWash:InvokeServer(slot, guid) end)
+                                pcall(function() startWash:InvokeServer(guid, slot) end)
+                            elseif startWash:IsA("RemoteEvent") then 
+                                pcall(function() startWash:FireServer(slot, guid) end)
+                                pcall(function() startWash:FireServer(guid, slot) end)
+                            end
+                        end
+                        if startWash:IsA("RemoteFunction") then pcall(function() startWash:InvokeServer(guid) end)
+                        elseif startWash:IsA("RemoteEvent") then pcall(function() startWash:FireServer(guid) end) end
                     end)
                     
-                    task.wait(2.8)
+                    task.wait(1.5)
                     
-                    for attempt = 1, 12 do
-                        local isClaimed = false
+                    for attempt = 1, 10 do
+                        local successDetected = false
+                        
+                        if speedUpWash then
+                            pcall(function()
+                                for slot = 1, 3 do
+                                    if speedUpWash:IsA("RemoteFunction") then 
+                                        pcall(function() speedUpWash:InvokeServer(slot, guid) end)
+                                        pcall(function() speedUpWash:InvokeServer(guid, slot) end)
+                                    elseif speedUpWash:IsA("RemoteEvent") then 
+                                        pcall(function() speedUpWash:FireServer(slot, guid) end)
+                                        pcall(function() speedUpWash:FireServer(guid, slot) end)
+                                    end
+                                end
+                            end)
+                        end
                         
                         pcall(function()
-                            if claimWash then
-                                if claimWash:IsA("RemoteFunction") then 
-                                    local res = claimWash:InvokeServer(guid)
-                                    if res ~= nil then
-                                        if type(res) == "string" then
-                                            local str = string.lower(res)
-                                            if not string.find(str, "fail") and not string.find(str, "fast") and not string.find(str, "empty") then isClaimed = true end
-                                        else isClaimed = true end
+                            local rems = {claimWash, collectWash}
+                            for _, rem in ipairs(rems) do
+                                if rem then
+                                    for slot = 1, 3 do
+                                        if rem:IsA("RemoteFunction") then 
+                                            local ok, res = pcall(function() return rem:InvokeServer(slot, guid) end)
+                                            if not ok or res == nil then ok, res = pcall(function() return rem:InvokeServer(guid, slot) end) end
+                                            
+                                            if ok and res ~= nil then
+                                                if type(res) == "string" then
+                                                    local str = string.lower(res)
+                                                    if not string.find(str, "fail") and not string.find(str, "empty") and not string.find(str, "fast") then
+                                                        successDetected = true
+                                                    end
+                                                else
+                                                    successDetected = true
+                                                end
+                                            end
+                                        elseif rem:IsA("RemoteEvent") then 
+                                            pcall(function() rem:FireServer(slot, guid) end)
+                                            pcall(function() rem:FireServer(guid, slot) end)
+                                        end
                                     end
-                                elseif claimWash:IsA("RemoteEvent") then claimWash:FireServer(guid) end
-                            end
-                            
-                            if collectWash then
-                                if collectWash:IsA("RemoteFunction") then 
-                                    local res = collectWash:InvokeServer(guid)
-                                    if res ~= nil then
-                                        if type(res) == "string" then
-                                            local str = string.lower(res)
-                                            if not string.find(str, "fail") and not string.find(str, "fast") and not string.find(str, "empty") then isClaimed = true end
-                                        else isClaimed = true end
-                                    end
-                                elseif collectWash:IsA("RemoteEvent") then collectWash:FireServer(guid) end
+                                end
                             end
                         end)
                         
-                        if isClaimed then break end
-                        task.wait(1.5)
+                        if successDetected then break end
+                        task.wait(1)
                     end
                     
                     if originalCFrame then task.wait(0.3); Utils.warpTo(originalCFrame) end
