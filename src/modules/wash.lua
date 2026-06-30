@@ -46,9 +46,11 @@ function WashModule.init(Config, Utils)
     local function autoClaimUI()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-        if not uiC then return end
+        if not uiC then return false end
 
+        local isBusy = false
         local washShop = uiC:FindFirstChild("WashShopPanel")
+        
         if washShop and washShop:FindFirstChild("SlotsContainer") then
             local wasVisible = washShop.Visible
             washShop.Visible = true 
@@ -56,8 +58,17 @@ function WashModule.init(Config, Utils)
             for i = 1, 3 do
                 local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
                 if slot and slot:FindFirstChild("Content") then
-                    local colBtn = slot.Content:FindFirstChild("CollectBtn")
-                    local clmBtn = slot.Content:FindFirstChild("ClaimBtn")
+                    local content = slot.Content
+                    local colBtn = content:FindFirstChild("CollectBtn")
+                    local clmBtn = content:FindFirstChild("ClaimBtn")
+                    local timer = content:FindFirstChild("TimerText")
+                    local itemName = content:FindFirstChild("ItemName")
+                    
+                    if timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "00:00" and timer.Text ~= "0s" then
+                        isBusy = true
+                        local iName = (itemName and itemName.Text) or "Item"
+                        warn("[WASH_TIMER] " .. iName .. " (Slot " .. tostring(i) .. ") Time Left: " .. timer.Text)
+                    end
                     
                     if colBtn and colBtn.Visible then clickUI(colBtn) end
                     task.wait(0.05)
@@ -78,6 +89,8 @@ function WashModule.init(Config, Utils)
             
             washReveal.Visible = wasRevVisible
         end
+        
+        return isBusy
     end
 
     function WashModule.washInventoryItems()
@@ -155,13 +168,17 @@ function WashModule.init(Config, Utils)
                             end
                         end
                         
-                        for waitLoop = 1, 6 do
-                            task.wait(0.5)
-                            autoClaimUI()
+                        local maxWait = 180
+                        local currentWait = 0
+                        while currentWait < maxWait do
+                            task.wait(1)
+                            local stillWashing = autoClaimUI()
+                            if not stillWashing then break end
+                            currentWait = currentWait + 1
                         end
                     end
                     
-                    for finalSweep = 1, 15 do
+                    for finalSweep = 1, 5 do
                         task.wait(0.5)
                         autoClaimUI()
                     end
