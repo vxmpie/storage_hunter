@@ -41,25 +41,40 @@ function WashModule.init(Config, Utils)
     end
 
     local function autoClaimUI()
+        warn("[DIAGNOSTIC] START_CLAIM")
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-        if not uiC then return end
+        if not uiC then
+            warn("[DIAGNOSTIC] NO_UIC")
+            return
+        end
 
         local washShop = uiC:FindFirstChild("WashShopPanel")
-        if washShop and washShop:FindFirstChild("SlotsContainer") then
-            for i = 1, 3 do
-                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
-                if slot and slot:FindFirstChild("Content") then
-                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
-                    task.wait(0.1)
-                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
+        if washShop then
+            warn("[DIAGNOSTIC] SHOP_VIS: " .. tostring(washShop.Visible))
+            if washShop:FindFirstChild("SlotsContainer") then
+                for i = 1, 3 do
+                    local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
+                    if slot and slot:FindFirstChild("Content") then
+                        local colBtn = slot.Content:FindFirstChild("CollectBtn")
+                        local clmBtn = slot.Content:FindFirstChild("ClaimBtn")
+                        warn("[DIAGNOSTIC] SLOT_" .. tostring(i) .. "_COL_" .. tostring(colBtn ~= nil) .. "_CLM_" .. tostring(clmBtn ~= nil))
+                        clickUI(colBtn)
+                        task.wait(0.1)
+                        clickUI(clmBtn)
+                    end
                 end
             end
         end
 
         local washReveal = uiC:FindFirstChild("WashReveal")
-        if washReveal and washReveal:FindFirstChild("Content") then
-            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
+        if washReveal then
+            warn("[DIAGNOSTIC] REV_VIS: " .. tostring(washReveal.Visible))
+            if washReveal:FindFirstChild("Content") then
+                local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
+                warn("[DIAGNOSTIC] REV_CLM_" .. tostring(clmBtn ~= nil))
+                clickUI(clmBtn)
+            end
         end
     end
 
