@@ -26,27 +26,18 @@ function WashModule.init(Config, Utils)
     end
 
     local function clickUI(btn)
-        if not btn then return end
-        pcall(function()
-            if firesignal then
-                pcall(function() firesignal(btn.MouseButton1Click) end)
-                pcall(function() firesignal(btn.MouseButton1Down) end)
-            end
-            if getconnections then
-                for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-                    pcall(function() conn:Fire() end)
-                    pcall(function() 
-                        if type(conn.Function) == "function" then conn.Function() end 
-                    end)
+        if btn then
+            pcall(function()
+                if getconnections then
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+                        pcall(function() conn:Fire() end)
+                    end
+                    for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
+                        pcall(function() conn:Fire() end)
+                    end
                 end
-                for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
-                    pcall(function() conn:Fire() end)
-                    pcall(function() 
-                        if type(conn.Function) == "function" then conn.Function() end 
-                    end)
-                end
-            end
-        end)
+            end)
+        end
     end
 
     local function autoClaimUI()
@@ -72,13 +63,13 @@ function WashModule.init(Config, Utils)
         end
     end
 
-function WashModule.washInventoryItems()
-        warn("[TELEMETRY] เริ่มต้นคำสั่ง Wash...")
+    function WashModule.washInventoryItems()
+        warn("[TELEMETRY] เริ่มต้นระบบ Wash...")
         local events = ReplicatedStorage:FindFirstChild("Events")
-        if not events then warn("[TELEMETRY] พัง: หาโฟลเดอร์ Events ไม่เจอ") return end
+        if not events then warn("[TELEMETRY] ไม่พบโฟลเดอร์ Events") return end
         
         local wash = events:FindFirstChild("Wash")
-        if not wash then warn("[TELEMETRY] พัง: หาโฟลเดอร์ Wash ไม่เจอ") return end
+        if not wash then warn("[TELEMETRY] ไม่พบโฟลเดอร์ Wash") return end
         
         local getWashable = wash:FindFirstChild("GetWashableItems")
         local startWash = wash:FindFirstChild("StartWash")
@@ -96,7 +87,7 @@ function WashModule.washInventoryItems()
             end)
             
             if success and type(data) == "table" and data.items then
-                warn("[TELEMETRY] เจอไอเทมสกปรกในกระเป๋า: " .. tostring(#data.items) .. " ชิ้น")
+                warn("[TELEMETRY] พบของสกปรก: " .. tostring(#data.items) .. " ชิ้น")
                 local itemsToWash = {}
                 
                 for _, item in pairs(data.items) do
@@ -111,8 +102,6 @@ function WashModule.washInventoryItems()
                             rarity = tostring(rRaw)
                         end
                     end
-                    
-                    warn("[TELEMETRY] เช็คของ ID: " .. tostring(itemId) .. " | Rarity ที่ระบบเห็น: " .. rarity)
                     
                     local isAllowed = false
                     local rLower = string.lower(rarity)
@@ -133,7 +122,7 @@ function WashModule.washInventoryItems()
                     end
                 end
                 
-                warn("[TELEMETRY] จำนวนของที่ผ่านเงื่อนไข (ตรงกับที่ติ๊กไว้): " .. tostring(#itemsToWash) .. " ชิ้น")
+                warn("[TELEMETRY] ผ่านฟิลเตอร์ Rarity: " .. tostring(#itemsToWash) .. " ชิ้น")
                 
                 if #itemsToWash > 0 then
                     local originalCFrame
@@ -146,7 +135,7 @@ function WashModule.washInventoryItems()
                         Utils.warpTo(washCFrame)
                         task.wait(1)
                     else
-                        warn("[TELEMETRY] พัง: หาพิกัดตู้ซักไม่เจอ")
+                        warn("[TELEMETRY] คำเตือน: หาพิกัดตู้ซักไม่เจอ")
                     end
                     
                     for _, guid in ipairs(itemsToWash) do
@@ -197,11 +186,12 @@ function WashModule.washInventoryItems()
                         task.wait(1)
                         Utils.warpTo(originalCFrame)
                     end
+                    warn("[TELEMETRY] ทำงานเสร็จสิ้น")
                 else
-                    warn("[TELEMETRY] จบการทำงาน: มีของสกปรกนะ แต่ไม่มีอันไหนตรงกับระดับ Rarity ที่นายตั้งไว้เลย")
+                    warn("[TELEMETRY] ไม่มีของที่ตรงกับ Rarity ที่เลือก")
                 end
             else
-                warn("[TELEMETRY] จบการทำงาน: ดึงข้อมูลไม่สำเร็จ หรือตอนนี้ไม่มีของสกปรกในตัวเลย")
+                warn("[TELEMETRY] ไม่มีของสกปรก หรือดึงข้อมูลไม่ได้")
             end
         end
     end
