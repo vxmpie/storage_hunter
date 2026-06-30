@@ -33,55 +33,71 @@ function WashModule.init(Config, Utils)
                 pcall(function() firesignal(btn.MouseButton1Down) end)
             end
             
-            if type(getconnections) == "function" then
-                local clicks = getconnections(btn.MouseButton1Click)
-                if clicks then
-                    for _, conn in pairs(clicks) do
-                        pcall(function() conn:Fire() end)
-                        pcall(function() conn.Function() end)
-                    end
-                end
-                
-                local downs = getconnections(btn.MouseButton1Down)
-                if downs then
-                    for _, conn in pairs(downs) do
-                        pcall(function() conn:Fire() end)
-                        pcall(function() conn.Function() end)
-                    end
-                end
+            local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
+            local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
+            if x > 0 and y > 56 then
+                VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                task.wait(0.02)
+                VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
             end
         end)
     end
 
     local function autoClaimUI()
-        warn("DIAG_WASH_CLAIM_START")
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
         if not uiC then return end
 
         local washShop = uiC:FindFirstChild("WashShopPanel")
         if washShop and washShop:FindFirstChild("SlotsContainer") then
+            local wasVisible = washShop.Visible
+            washShop.Visible = true 
+            
             for i = 1, 3 do
                 local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
                 if slot and slot:FindFirstChild("Content") then
-                    warn("DIAG_WASH_SLOT_" .. tostring(i))
-                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
-                    task.wait(0.1)
-                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
+                    local colBtn = slot.Content:FindFirstChild("CollectBtn")
+                    local clmBtn = slot.Content:FindFirstChild("ClaimBtn")
+                    
+                    if colBtn and colBtn.Visible then clickUI(colBtn) end
+                    task.wait(0.05)
+                    if clmBtn and clmBtn.Visible then clickUI(clmBtn) end
                 end
             end
+            
+            washShop.Visible = wasVisible
         end
 
         local washReveal = uiC:FindFirstChild("WashReveal")
         if washReveal and washReveal:FindFirstChild("Content") then
-            warn("DIAG_WASH_REV")
-            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
+            local wasRevVisible = washReveal.Visible
+            washReveal.Visible = true
+            
+            local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
+            if clmBtn and clmBtn.Visible then clickUI(clmBtn) end
+            
+            washReveal.Visible = wasRevVisible
         end
-        warn("DIAG_WASH_CLAIM_END")
     end
 
-    local function getRarity(itemId)
+    local function getRarity(itemObj)
         if not itemDB then return "Unknown" end
+        
+        local itemId = itemObj.ItemId or itemObj.itemId or itemObj.id or itemObj.Name or itemObj.TemplateId or itemObj.ItemType
+        
+        if not itemId then
+            for _, v in pairs(itemObj) do
+                if type(v) == "string" or type(v) == "number" then
+                    if itemDB[v] or itemDB[tonumber(v)] or itemDB[tostring(v)] then
+                        itemId = v
+                        break
+                    end
+                end
+            end
+        end
+        
+        if not itemId then return "Unknown" end
+        
         local info = itemDB[itemId] or itemDB[tonumber(itemId)] or itemDB[tostring(itemId)]
         if type(info) == "table" then
             return tostring(info.Rarity or info.rarity or info.Tier or info.tier or "Unknown")
@@ -99,7 +115,6 @@ function WashModule.init(Config, Utils)
     end
 
     function WashModule.washInventoryItems()
-        warn("[WASH_DIAGNOSTIC] ตรวจสอบกระเป๋าค้นหาไอเทม...")
         local events = ReplicatedStorage:FindFirstChild("Events")
         local wash = events and events:FindFirstChild("Wash")
         if not wash then return end
@@ -121,17 +136,15 @@ function WashModule.init(Config, Utils)
                 
                 for _, item in pairs(data.items) do
                     local guid = item.guid
-                    local itemId = item.ItemId or item.itemId or item.id
-                    local rarity = getRarity(itemId)
-                    
-                    warn("[WASH_DIAGNOSTIC] ตรวจพบไอเทม ID: " .. tostring(itemId) .. " | Rarity ที่ค้นเจอ: " .. rarity)
+                    local rarity = getRarity(item)
                     
                     local isAllowed = false
                     local rLower = string.lower(rarity)
                     
                     for rName, state in pairs(Config.WashRarities) do
                         if state and string.find(rLower, string.lower(rName)) then
-                            isAllowed = true; break
+                            isAllowed = true
+                            break
                         end
                     end
                     if Config.WashRarities.Unknown and not isAllowed and (rarity == "Unknown" or rarity == "nil") then
@@ -171,14 +184,18 @@ function WashModule.init(Config, Utils)
                             end
                         end
                         
-                        for waitLoop = 1, 8 do
+                        for waitLoop = 1, 4 do
                             task.wait(0.5)
                             autoClaimUI()
                         end
                     end
                     
+                    for finalSweep = 1, 10 do
+                        task.wait(0.5)
+                        autoClaimUI()
+                    end
+                    
                     if originalCFrame then task.wait(0.5) Utils.warpTo(originalCFrame) end
-                    warn("[WASH_DIAGNOSTIC] ซักและเก็บของเสร็จสิ้น (เข้ากระเป๋าแน่นอน)")
                 end
             end
         end
