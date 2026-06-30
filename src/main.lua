@@ -45,9 +45,6 @@ if not Config or not Utils or not UI or not WashModule or not FarmModule then
     return
 end
 
-WashModule.init(Config, Utils)
-FarmModule.init(Config, Utils, WashModule)
-
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "GenesisUI_Pro"
 ScreenGui.ResetOnSpawn = false
@@ -174,7 +171,10 @@ for _, place in ipairs(farmOptions) do
     end)
 end
 
-Instance.new("Frame", Tab_Farming).Size = UDim2.new(1, 0, 0, 10).BackgroundTransparency = 1
+local gapFarming = Instance.new("Frame")
+gapFarming.Size = UDim2.new(1, 0, 0, 10)
+gapFarming.BackgroundTransparency = 1
+gapFarming.Parent = Tab_Farming
 
 local StartFarmBtn = UI.createActionButton(Tab_Farming, "START AUTO FARM", Color3.fromRGB(40, 160, 80), function() end)
 StartFarmBtn.MouseButton1Click:Connect(function()
@@ -246,7 +246,10 @@ UI.createActionButton(Tab_Misc, "Spawn Flatbed", Color3.fromRGB(45, 45, 55), fun
     end
 end)
 
-Instance.new("Frame", Tab_Misc).Size = UDim2.new(1, 0, 0, 10).BackgroundTransparency = 1
+local gapMisc = Instance.new("Frame")
+gapMisc.Size = UDim2.new(1, 0, 0, 10)
+gapMisc.BackgroundTransparency = 1
+gapMisc.Parent = Tab_Misc
 
 UI.createActionButton(Tab_Misc, "UNLOAD SCRIPT", Color3.fromRGB(150, 40, 40), function()
     Config.IsFarming = false
