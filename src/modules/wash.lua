@@ -31,6 +31,33 @@ function WashModule.init(Config, Utils)
             if type(firesignal) == "function" then
                 pcall(function() firesignal(btn.MouseButton1Click) end)
                 pcall(function() firesignal(btn.MouseButton1Down) end)
+                pcall(function() firesignal(btn.Activated) end)
+            end
+            
+            if type(getconnections) == "function" then
+                local s1, conns = pcall(function() return getconnections(btn.MouseButton1Click) end)
+                if s1 and type(conns) == "table" then
+                    for _, conn in pairs(conns) do
+                        pcall(function() 
+                            if type(conn) == "table" or type(conn) == "userdata" then
+                                if conn.Fire then conn:Fire() end
+                                if conn.Function then conn.Function() end
+                            end
+                        end)
+                    end
+                end
+                
+                local s2, conns2 = pcall(function() return getconnections(btn.Activated) end)
+                if s2 and type(conns2) == "table" then
+                    for _, conn in pairs(conns2) do
+                        pcall(function() 
+                            if type(conn) == "table" or type(conn) == "userdata" then
+                                if conn.Fire then conn:Fire() end
+                                if conn.Function then conn.Function() end
+                            end
+                        end)
+                    end
+                end
             end
             
             local absPos = btn.AbsolutePosition
@@ -39,7 +66,7 @@ function WashModule.init(Config, Utils)
                 local x = absPos.X + (absSize.X / 2)
                 local y = absPos.Y + (absSize.Y / 2) + 56
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.05)
+                task.wait(0.02)
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
             end
         end)
@@ -69,9 +96,9 @@ function WashModule.init(Config, Utils)
                         isBusy = true
                     end
                     
-                    if colBtn and colBtn.Visible then clickUI(colBtn) end
+                    if colBtn then clickUI(colBtn) end
                     task.wait(0.05)
-                    if clmBtn and clmBtn.Visible then clickUI(clmBtn) end
+                    if clmBtn then clickUI(clmBtn) end
                 end
             end
             
@@ -84,7 +111,7 @@ function WashModule.init(Config, Utils)
             washReveal.Visible = true
             
             local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
-            if clmBtn and clmBtn.Visible then clickUI(clmBtn) end
+            if clmBtn then clickUI(clmBtn) end
             
             washReveal.Visible = wasRevVisible
         end
