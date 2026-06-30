@@ -116,7 +116,7 @@ function WashModule.init(Config, Utils)
                         clickUI(colBtn) 
                     end
                     
-                    task.wait(0.05)
+                    task.wait(0.02)
                     
                     if clmBtn and clmBtn.Visible then 
                         isBusy = true 
@@ -187,7 +187,7 @@ function WashModule.init(Config, Utils)
                     local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
                     local washCFrame = getWashStationCFrame()
                     
-                    if washCFrame then Utils.warpTo(washCFrame); task.wait(1) end
+                    if washCFrame then Utils.warpTo(washCFrame); task.wait(0.3) end
                     
                     local guid = itemsToWash[1]
                     
@@ -201,20 +201,20 @@ function WashModule.init(Config, Utils)
                         end
                     end)
                     
-                    task.wait(1.5) 
+                    task.wait(0.5)
                     
                     local prompt = getWashPromptObj()
                     if prompt then
                         pcall(function() fireproximityprompt(prompt) end)
-                        task.wait(1)
+                        task.wait(0.3)
                         clickDialogOption("clean an item")
-                        task.wait(1)
+                        task.wait(0.3)
                     end
                     
-                    local maxWait = 240
+                    local maxWait = 1200
                     local currentWait = 0
                     while currentWait < maxWait do
-                        task.wait(1)
+                        task.wait(0.2)
                         
                         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
                         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
@@ -222,9 +222,9 @@ function WashModule.init(Config, Utils)
                         
                         if washShop and not washShop.Visible then
                             if prompt then pcall(function() fireproximityprompt(prompt) end) end
-                            task.wait(1)
+                            task.wait(0.3)
                             clickDialogOption("clean an item")
-                            task.wait(1)
+                            task.wait(0.3)
                         end
                         
                         local stillWashing = processWashUI()
@@ -234,8 +234,8 @@ function WashModule.init(Config, Utils)
                     end
                     
                     warn("WASH_SWEEP_START")
-                    for finalSweep = 1, 6 do
-                        task.wait(0.5)
+                    for finalSweep = 1, 2 do
+                        task.wait(0.2)
                         processWashUI()
                         forceClaimRemotes(wash, guid)
                     end
@@ -246,12 +246,12 @@ function WashModule.init(Config, Utils)
                     if washShop and washShop.Visible then
                         local closeBtn = washShop:FindFirstChild("HeaderBar") and washShop.HeaderBar:FindFirstChild("CloseButton")
                         if closeBtn then clickUI(closeBtn) end
-                        task.wait(0.5)
+                        task.wait(0.2)
                     end
                     
                     clickDialogOption("maybe later")
                     
-                    if originalCFrame then task.wait(1); Utils.warpTo(originalCFrame) end
+                    if originalCFrame then task.wait(0.2); Utils.warpTo(originalCFrame) end
                     warn("WASH_FINISHED")
                 end
             end
