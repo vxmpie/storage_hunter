@@ -1,5 +1,5 @@
 local githubUser = "vxmpie"
-local repoBase = "https://raw.githubusercontent.com/" .. githubUser .. "/storage_hunter/refs/heads/main/src/"
+local repoBase = "https://raw.githubusercontent.com/" .. githubUser .. "/storage_hunter/main/src/"
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -12,23 +12,23 @@ local LocalPlayer = Players.LocalPlayer
 local heartbeatConnection = nil
 
 local function loadModule(fileName)
-    local url = repoBase .. fileName .. "?t=" .. tostring(tick())
+    local url = repoBase .. fileName
     local success, result = pcall(function() return game:HttpGet(url) end)
     
     if not success or string.find(result, "404: Not Found") then
-        warn("FETCH_FAIL_" .. fileName)
+        warn("MODULE_FETCH_FAIL: " .. fileName)
         return nil
     end
     
     local func, err = loadstring(result)
     if not func then
-        warn("SYNTAX_FAIL_" .. fileName .. "_" .. tostring(err))
+        warn("MODULE_SYNTAX_ERROR: " .. fileName .. " | " .. tostring(err))
         return nil
     end
     
     local ok, ret = pcall(func)
     if not ok then
-        warn("RUNTIME_FAIL_" .. fileName .. "_" .. tostring(ret))
+        warn("MODULE_RUNTIME_ERROR: " .. fileName .. " | " .. tostring(ret))
         return nil
     end
     return ret
@@ -41,7 +41,7 @@ local WashModule = loadModule("modules/wash.lua")
 local FarmModule = loadModule("modules/farm.lua")
 
 if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("MODULE_LOAD_FAILED")
+    warn("GENESIS_HALTED: โหลดโมดูลไม่ครบ เช็คชื่อไฟล์และโฟลเดอร์ให้ตรงกันเป๊ะๆ")
     return
 end
 
