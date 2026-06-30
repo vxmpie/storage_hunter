@@ -189,67 +189,67 @@ function WashModule.init(Config, Utils)
                     
                     if washCFrame then Utils.warpTo(washCFrame); task.wait(1) end
                     
-                    for _, guid in ipairs(itemsToWash) do
-                        pcall(function()
-                            if startWash:IsA("RemoteFunction") then
-                                for slot = 1, 3 do startWash:InvokeServer(slot, guid); startWash:InvokeServer(guid, slot) end
-                                startWash:InvokeServer(guid)
-                            elseif startWash:IsA("RemoteEvent") then
-                                for slot = 1, 3 do startWash:FireServer(slot, guid); startWash:FireServer(guid, slot) end
-                                startWash:FireServer(guid)
-                            end
-                        end)
+                    local guid = itemsToWash[1]
+                    
+                    pcall(function()
+                        if startWash:IsA("RemoteFunction") then
+                            for slot = 1, 3 do startWash:InvokeServer(slot, guid); startWash:InvokeServer(guid, slot) end
+                            startWash:InvokeServer(guid)
+                        elseif startWash:IsA("RemoteEvent") then
+                            for slot = 1, 3 do startWash:FireServer(slot, guid); startWash:FireServer(guid, slot) end
+                            startWash:FireServer(guid)
+                        end
+                    end)
+                    
+                    task.wait(1.5) 
+                    
+                    local prompt = getWashPromptObj()
+                    if prompt then
+                        pcall(function() fireproximityprompt(prompt) end)
+                        task.wait(1)
+                        clickDialogOption("clean an item")
+                        task.wait(1)
+                    end
+                    
+                    local maxWait = 240
+                    local currentWait = 0
+                    while currentWait < maxWait do
+                        task.wait(1)
                         
-                        task.wait(1.5) 
+                        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+                        local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
                         
-                        local prompt = getWashPromptObj()
-                        if prompt then
-                            pcall(function() fireproximityprompt(prompt) end)
+                        if washShop and not washShop.Visible then
+                            if prompt then pcall(function() fireproximityprompt(prompt) end) end
                             task.wait(1)
                             clickDialogOption("clean an item")
                             task.wait(1)
                         end
                         
-                        local maxWait = 240
-                        local currentWait = 0
-                        while currentWait < maxWait do
-                            task.wait(1)
-                            
-                            local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                            local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-                            local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
-                            
-                            if washShop and not washShop.Visible then
-                                if prompt then pcall(function() fireproximityprompt(prompt) end) end
-                                task.wait(1)
-                                clickDialogOption("clean an item")
-                                task.wait(1)
-                            end
-                            
-                            local stillWashing = processWashUI()
-                            forceClaimRemotes(wash, guid)
-                            if not stillWashing then break end
-                            currentWait = currentWait + 1
-                        end
-                        
-                        warn("WASH_SWEEP_START")
-                        for finalSweep = 1, 6 do
-                            task.wait(0.5)
-                            processWashUI()
-                            forceClaimRemotes(wash, guid)
-                        end
-                        
-                        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-                        local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
-                        if washShop and washShop.Visible then
-                            local closeBtn = washShop:FindFirstChild("HeaderBar") and washShop.HeaderBar:FindFirstChild("CloseButton")
-                            if closeBtn then clickUI(closeBtn) end
-                            task.wait(0.5)
-                        end
-                        
-                        clickDialogOption("maybe later")
+                        local stillWashing = processWashUI()
+                        forceClaimRemotes(wash, guid)
+                        if not stillWashing then break end
+                        currentWait = currentWait + 1
                     end
+                    
+                    warn("WASH_SWEEP_START")
+                    for finalSweep = 1, 6 do
+                        task.wait(0.5)
+                        processWashUI()
+                        forceClaimRemotes(wash, guid)
+                    end
+                    
+                    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                    local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+                    local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
+                    if washShop and washShop.Visible then
+                        local closeBtn = washShop:FindFirstChild("HeaderBar") and washShop.HeaderBar:FindFirstChild("CloseButton")
+                        if closeBtn then clickUI(closeBtn) end
+                        task.wait(0.5)
+                    end
+                    
+                    clickDialogOption("maybe later")
                     
                     if originalCFrame then task.wait(1); Utils.warpTo(originalCFrame) end
                     warn("WASH_FINISHED")
