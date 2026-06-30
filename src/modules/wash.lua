@@ -26,14 +26,50 @@ function WashModule.init(Config, Utils)
     end
 
     local function clickUI(btn)
-        if not btn or not btn.Visible then return end
+        if not btn then return end
         pcall(function()
-            local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
-            local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 56
-            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-            task.wait(0.05)
-            VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+            if type(firesignal) == "function" then
+                pcall(function() firesignal(btn.MouseButton1Click) end)
+            end
+            
+            if type(getconnections) == "function" then
+                local conns = getconnections(btn.MouseButton1Click)
+                if type(conns) == "table" then
+                    for _, conn in pairs(conns) do
+                        if type(conn) == "table" then
+                            if type(conn.Fire) == "function" then
+                                pcall(function() conn:Fire() end)
+                            elseif type(conn.Function) == "function" then
+                                pcall(function() conn.Function() end)
+                            end
+                        end
+                    end
+                end
+            end
         end)
+    end
+
+    local function autoClaimUI()
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+        if not uiC then return end
+
+        local washShop = uiC:FindFirstChild("WashShopPanel")
+        if washShop and washShop:FindFirstChild("SlotsContainer") then
+            for i = 1, 3 do
+                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
+                if slot and slot:FindFirstChild("Content") then
+                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
+                    task.wait(0.1)
+                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
+                end
+            end
+        end
+
+        local washReveal = uiC:FindFirstChild("WashReveal")
+        if washReveal and washReveal:FindFirstChild("Content") then
+            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
+        end
     end
 
     local function autoClaimUI()
