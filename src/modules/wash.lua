@@ -3,6 +3,8 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local GuiService = game:GetService("GuiService")
 
 local itemDB
 pcall(function()
@@ -28,34 +30,14 @@ function WashModule.init(Config, Utils)
     local function clickUI(btn)
         if not btn then return end
         pcall(function()
-            if type(getconnections) == "function" then
-                local signals = {btn.MouseButton1Click, btn.MouseButton1Down, btn.Activated}
-                for _, sig in ipairs(signals) do
-                    local ok, conns = pcall(function() return getconnections(sig) end)
-                    if ok and type(conns) == "table" then
-                        for _, conn in pairs(conns) do
-                            pcall(function()
-                                if type(conn) == "table" or type(conn) == "userdata" then
-                                    if type(conn.Fire) == "function" then
-                                        conn:Fire()
-                                    end
-                                    if type(conn.Function) == "function" then
-                                        conn.Function()
-                                    end
-                                end
-                            end)
-                        end
-                    end
-                end
-            end
-            
             local absPos = btn.AbsolutePosition
             local absSize = btn.AbsoluteSize
             if absSize.X > 0 and absSize.Y > 0 then
+                local inset = GuiService:GetGuiInset()
                 local x = absPos.X + (absSize.X / 2)
-                local y = absPos.Y + (absSize.Y / 2) + 56
+                local y = absPos.Y + (absSize.Y / 2) + inset.Y
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.02)
+                task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
             end
         end)
@@ -80,8 +62,12 @@ function WashModule.init(Config, Utils)
                     local colBtn = content:FindFirstChild("CollectBtn")
                     local clmBtn = content:FindFirstChild("ClaimBtn")
                     local spdBtn = content:FindFirstChild("SpeedUpBtn")
+                    local timer = content:FindFirstChild("TimerText")
                     
                     if spdBtn and spdBtn.Visible then
+                        isBusy = true
+                    end
+                    if timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "00:00" then
                         isBusy = true
                     end
                     
@@ -134,7 +120,8 @@ function WashModule.init(Config, Utils)
                 
                 if #itemsToWash > 0 then
                     warn("WASH_ITEMS_FOUND_" .. tostring(#itemsToWash))
-                    local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.CFrame
+                    local originalCFrame = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    local originalPos = originalCFrame and originalCFrame.CFrame
                     local washCFrame = getWashStationCFrame()
                     
                     if washCFrame then 
@@ -161,6 +148,30 @@ function WashModule.init(Config, Utils)
                         
                         task.wait(1.5) 
                         
+                        local speedUpWash = wash:FindFirstChild("SpeedUpWash")
+                        local collectWash = wash:FindFirstChild("CollectWash")
+                        local claimWashedItem = wash:FindFirstChild("ClaimWashedItem")
+                        local postWashRemotes = {speedUpWash, collectWash, claimWashedItem}
+                        for _, rem in ipairs(postWashRemotes) do
+                            if rem then
+                                pcall(function()
+                                    for slot = 1, 3 do
+                                        if rem:IsA("RemoteFunction") then 
+                                            pcall(function() rem:InvokeServer(slot, guid) end) 
+                                            pcall(function() rem:InvokeServer(guid, slot) end) 
+                                            pcall(function() rem:InvokeServer(slot) end) 
+                                            pcall(function() rem:InvokeServer(guid) end)
+                                        elseif rem:IsA("RemoteEvent") then 
+                                            pcall(function() rem:FireServer(slot, guid) end) 
+                                            pcall(function() rem:FireServer(guid, slot) end) 
+                                            pcall(function() rem:FireServer(slot) end) 
+                                            pcall(function() rem:FireServer(guid) end) 
+                                        end
+                                    end
+                                end)
+                            end
+                        end
+                        
                         local maxWait = 240
                         local currentWait = 0
                         while currentWait < maxWait do
@@ -177,9 +188,9 @@ function WashModule.init(Config, Utils)
                         end
                     end
                     
-                    if originalCFrame then 
+                    if originalPos then 
                         task.wait(1) 
-                        Utils.warpTo(originalCFrame) 
+                        Utils.warpTo(originalPos) 
                     end
                     warn("WASH_FINISHED")
                 end
