@@ -26,18 +26,27 @@ function WashModule.init(Config, Utils)
     end
 
     local function clickUI(btn)
-        if btn then
-            pcall(function()
-                if getconnections then
-                    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-                        conn:Fire()
-                    end
-                    for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
-                        conn:Fire()
-                    end
+        if not btn then return end
+        pcall(function()
+            if firesignal then
+                pcall(function() firesignal(btn.MouseButton1Click) end)
+                pcall(function() firesignal(btn.MouseButton1Down) end)
+            end
+            if getconnections then
+                for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+                    pcall(function() conn:Fire() end)
+                    pcall(function() 
+                        if type(conn.Function) == "function" then conn.Function() end 
+                    end)
                 end
-            end)
-        end
+                for _, conn in ipairs(getconnections(btn.MouseButton1Down) or {}) do
+                    pcall(function() conn:Fire() end)
+                    pcall(function() 
+                        if type(conn.Function) == "function" then conn.Function() end 
+                    end)
+                end
+            end
+        end)
     end
 
     local function autoClaimUI()
