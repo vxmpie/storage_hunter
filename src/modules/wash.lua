@@ -30,19 +30,23 @@ function WashModule.init(Config, Utils)
         pcall(function()
             if type(firesignal) == "function" then
                 pcall(function() firesignal(btn.MouseButton1Click) end)
+                pcall(function() firesignal(btn.MouseButton1Down) end)
             end
             
             if type(getconnections) == "function" then
-                local conns = getconnections(btn.MouseButton1Click)
-                if type(conns) == "table" then
-                    for _, conn in pairs(conns) do
-                        if type(conn) == "table" then
-                            if type(conn.Fire) == "function" then
-                                pcall(function() conn:Fire() end)
-                            elseif type(conn.Function) == "function" then
-                                pcall(function() conn.Function() end)
-                            end
-                        end
+                local clicks = getconnections(btn.MouseButton1Click)
+                if clicks then
+                    for _, conn in pairs(clicks) do
+                        pcall(function() conn:Fire() end)
+                        pcall(function() conn.Function() end)
+                    end
+                end
+                
+                local downs = getconnections(btn.MouseButton1Down)
+                if downs then
+                    for _, conn in pairs(downs) do
+                        pcall(function() conn:Fire() end)
+                        pcall(function() conn.Function() end)
                     end
                 end
             end
@@ -68,29 +72,6 @@ function WashModule.init(Config, Utils)
 
         local washReveal = uiC:FindFirstChild("WashReveal")
         if washReveal and washReveal:FindFirstChild("Content") then
-            clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
-        end
-    end
-
-    local function autoClaimUI()
-        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
-        if not uiC then return end
-
-        local washShop = uiC:FindFirstChild("WashShopPanel")
-        if washShop and washShop.Visible and washShop:FindFirstChild("SlotsContainer") then
-            for i = 1, 3 do
-                local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
-                if slot and slot:FindFirstChild("Content") then
-                    clickUI(slot.Content:FindFirstChild("CollectBtn"))
-                    task.wait(0.1)
-                    clickUI(slot.Content:FindFirstChild("ClaimBtn"))
-                end
-            end
-        end
-
-        local washReveal = uiC:FindFirstChild("WashReveal")
-        if washReveal and washReveal.Visible and washReveal:FindFirstChild("Content") then
             clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
         end
     end
