@@ -48,7 +48,10 @@ function FarmModule.init(Config, Utils, WashModule)
             local savedGarageCFrame = targetPrompt.Parent.CFrame
             Utils.warpTo(savedGarageCFrame)
             task.wait(0.5)
-            if fireproximityprompt then fireproximityprompt(targetPrompt) end
+            
+            if type(fireproximityprompt) == "function" then 
+                pcall(function() fireproximityprompt(targetPrompt) end) 
+            end
             
             local pGui = LocalPlayer:FindFirstChild("PlayerGui")
             local uiController = pGui and pGui:FindFirstChild("UIControllerGui")
@@ -61,7 +64,6 @@ function FarmModule.init(Config, Utils, WashModule)
             end
             
             if auctionUI and auctionUI.Visible then
-                warn("DIAG_FARM_AUC_START")
                 local noneVisibleCount = 0
                 while Config.IsFarming do
                     if auctionUI.Visible then 
@@ -69,24 +71,18 @@ function FarmModule.init(Config, Utils, WashModule)
                     else 
                         noneVisibleCount = noneVisibleCount + 1 
                     end
-                    if noneVisibleCount >= 3 then 
-                        warn("DIAG_FARM_AUC_END")
-                        break 
-                    end
+                    if noneVisibleCount >= 2 then break end
                     task.wait(0.5)
                 end
-                task.wait(2)
+                task.wait(0.5)
             else
-                warn("DIAG_FARM_NO_UI")
-                task.wait(1)
+                task.wait(0.5)
                 return
             end
             
-            warn("DIAG_FARM_PRE_COL_" .. tostring(Config.IsFarming))
-            
             local garagePos = targetPrompt.Parent.Position
-            local maxIdleChecks = 150 
-            local idleChecks = 0
+            local emptyChecks = 0
+            local hasCollected = false
             
             while Config.IsFarming do
                 if Config.AutoUnload then
@@ -128,23 +124,24 @@ function FarmModule.init(Config, Utils, WashModule)
                 end
                 
                 if #itemsToCollect > 0 then
-                    idleChecks = 0 
+                    hasCollected = true
+                    emptyChecks = 0
                     table.sort(itemsToCollect, function(a, b) return a.weight < b.weight end)
                     for _, data in ipairs(itemsToCollect) do
                         if not Config.IsFarming then break end
                         Utils.warpTo(data.basePart.CFrame)
                         task.wait(0.05) 
-                        
                         if type(fireproximityprompt) == "function" then 
                             pcall(function() fireproximityprompt(data.prompt) end) 
                         end
                         task.wait(0.05) 
                     end
                 else
-                    idleChecks = idleChecks + 1
-                    if idleChecks >= maxIdleChecks then 
-                        warn("[FARM_DIAGNOSTIC] หมดเวลารอไอเทมเกิด เซิร์ฟเวอร์ไม่ส่งออบเจกต์มา ตัดจบรอบนี้")
-                        break 
+                    emptyChecks = emptyChecks + 1
+                    if hasCollected and emptyChecks >= 20 then
+                        break
+                    elseif not hasCollected and emptyChecks >= 150 then
+                        break
                     end
                     task.wait(0.1) 
                 end
