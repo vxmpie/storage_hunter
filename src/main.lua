@@ -41,8 +41,23 @@ local WashModule = loadModule("modules/wash.lua")
 local FarmModule = loadModule("modules/farm.lua")
 
 if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("GENESIS_HALTED: โหลดโมดูลไม่ครบ")
+    warn("GENESIS_HALTED: MODULES_MISSING")
     return
+end
+
+local function verifyModuleIntegrity()
+    if not WashModule.washInventoryItems then
+        warn("[DIAGNOSTIC] PRE_INIT: WASH_FUNCTION_NIL")
+    end
+end
+
+verifyModuleIntegrity()
+
+WashModule.init(Config, Utils)
+FarmModule.init(Config, Utils, WashModule)
+
+if WashModule.washInventoryItems and FarmModule.startAuctionAndCollect then
+    warn("[DIAGNOSTIC] POST_INIT: MODULES_ALLOCATED_SUCCESSFULLY")
 end
 
 local ScreenGui = Instance.new("ScreenGui")
