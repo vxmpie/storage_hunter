@@ -15,7 +15,7 @@ local function loadModule(fileName)
     local url = repoBase .. fileName
     local success, result = pcall(function() return game:HttpGet(url) end)
     
-    if not success or string.find(result, "404: Not Found") then
+    if not success or result == "404: Not Found" then
         warn("MODULE_FETCH_FAIL: " .. fileName)
         return nil
     end
@@ -41,7 +41,7 @@ local WashModule = loadModule("modules/wash.lua")
 local FarmModule = loadModule("modules/farm.lua")
 
 if not Config or not Utils or not UI or not WashModule or not FarmModule then
-    warn("GENESIS_HALTED: โหลดโมดูลไม่ครบ เช็คชื่อไฟล์และโฟลเดอร์ให้ตรงกันเป๊ะๆ")
+    warn("GENESIS_HALTED: โหลดโมดูลไม่ครบ")
     return
 end
 
