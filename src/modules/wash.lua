@@ -101,7 +101,7 @@ function WashModule.init(Config, Utils)
                     local timer = content:FindFirstChild("TimerText")
                     local itemName = content:FindFirstChild("ItemName")
                     
-                    local hasTimer = timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "00:00"
+                    local hasTimer = timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "0" and timer.Text ~= "00:00" and timer.Text ~= "0:00"
                     
                     if (spdBtn and spdBtn.Visible) or hasTimer then 
                         isBusy = true 
@@ -211,8 +211,10 @@ function WashModule.init(Config, Utils)
                         task.wait(0.5)
                     end
                     
-                    local maxWait = 480
+                    local maxWait = 20000 
                     local currentWait = 0
+                    local emptyChecks = 0
+                    
                     while currentWait < maxWait do
                         task.wait(0.5)
                         
@@ -225,11 +227,24 @@ function WashModule.init(Config, Utils)
                             task.wait(0.5)
                             clickDialogOption("clean an item")
                             task.wait(0.5)
+                            
+                            pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                            uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+                            washShop = uiC and uiC:FindFirstChild("WashShopPanel")
                         end
                         
-                        local stillWashing = processWashUI()
+                        if washShop and washShop.Visible then
+                            local stillWashing = processWashUI()
+                            if not stillWashing then 
+                                emptyChecks = emptyChecks + 1
+                            else
+                                emptyChecks = 0
+                            end
+                        end
+                        
                         forceClaimRemotes(wash, guid)
-                        if not stillWashing then break end
+                        
+                        if emptyChecks >= 4 then break end
                         currentWait = currentWait + 1
                     end
                     
