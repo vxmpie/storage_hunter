@@ -12,17 +12,23 @@ pcall(function()
 end)
 
 function WashModule.init(Config, Utils)
-    local function getWashStationCFrame()
+    local function getWashPromptObj()
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                 local name = string.lower(obj.Name)
                 local action = string.lower(obj.ActionText)
                 if string.find(name, "wash") or string.find(action, "wash") or string.find(name, "clean") or string.find(action, "clean") then
-                    if obj.Parent and obj.Parent:IsA("BasePart") then
-                        return obj.Parent.CFrame
-                    end
+                    return obj
                 end
             end
+        end
+        return nil
+    end
+
+    local function getWashStationCFrame()
+        local prompt = getWashPromptObj()
+        if prompt and prompt.Parent and prompt.Parent:IsA("BasePart") then
+            return prompt.Parent.CFrame
         end
         return nil
     end
@@ -48,18 +54,16 @@ function WashModule.init(Config, Utils)
         end)
     end
 
-    local function autoClaimUI()
+    local function processWashUI()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
         if not uiC then return false end
 
-        local isBusy = false
         local washShop = uiC:FindFirstChild("WashShopPanel")
-        
-        if washShop and washShop:FindFirstChild("SlotsContainer") then
-            local wasVisible = washShop.Visible
-            washShop.Visible = true 
-            
+        if not washShop or not washShop.Visible then return false end
+
+        local isBusy = false
+        if washShop:FindFirstChild("SlotsContainer") then
             for i = 1, 3 do
                 local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
                 if slot and slot:FindFirstChild("Content") then
@@ -68,25 +72,40 @@ function WashModule.init(Config, Utils)
                     local clmBtn = content:FindFirstChild("ClaimBtn")
                     local spdBtn = content:FindFirstChild("SpeedUpBtn")
                     local timer = content:FindFirstChild("TimerText")
+                    local itemName = content:FindFirstChild("ItemName")
                     
-                    if spdBtn and spdBtn.Visible then isBusy = true end
-                    if timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "00:00" then isBusy = true end
+                    local hasTimer = timer and timer.Visible and timer.Text ~= "" and timer.Text ~= "0s" and timer.Text ~= "00:00"
                     
-                    if colBtn then clickUI(colBtn) end
+                    if (spdBtn and spdBtn.Visible) or hasTimer then 
+                        isBusy = true 
+                        if hasTimer and timer.Text ~= "00:00" then
+                            local iName = (itemName and itemName.Text) or "Item"
+                            warn("WASH_TIMER_" .. iName .. "_" .. timer.Text)
+                        end
+                    end
+                    
+                    if colBtn and colBtn.Visible then 
+                        isBusy = true 
+                        clickUI(colBtn) 
+                    end
+                    
                     task.wait(0.05)
-                    if clmBtn then clickUI(clmBtn) end
+                    
+                    if clmBtn and clmBtn.Visible then 
+                        isBusy = true 
+                        clickUI(clmBtn) 
+                    end
                 end
             end
-            washShop.Visible = wasVisible
         end
 
         local washReveal = uiC:FindFirstChild("WashReveal")
-        if washReveal and washReveal:FindFirstChild("Content") then
-            local wasRevVisible = washReveal.Visible
-            washReveal.Visible = true
+        if washReveal and washReveal.Visible and washReveal:FindFirstChild("Content") then
             local clmBtn = washReveal.Content:FindFirstChild("ClaimBtn")
-            if clmBtn then clickUI(clmBtn) end
-            washReveal.Visible = wasRevVisible
+            if clmBtn and clmBtn.Visible then 
+                isBusy = true
+                clickUI(clmBtn) 
+            end
         end
         
         return isBusy
@@ -156,21 +175,46 @@ function WashModule.init(Config, Utils)
                         
                         task.wait(1.5) 
                         
+                        local prompt = getWashPromptObj()
+                        if prompt then
+                            pcall(function() fireproximityprompt(prompt) end)
+                            task.wait(1)
+                        end
+                        
                         local maxWait = 240
                         local currentWait = 0
                         while currentWait < maxWait do
                             task.wait(1)
-                            local stillWashing = autoClaimUI()
+                            
+                            local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                            local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+                            local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
+                            
+                            if washShop and not washShop.Visible then
+                                if prompt then pcall(function() fireproximityprompt(prompt) end) end
+                                task.wait(1)
+                            end
+                            
+                            local stillWashing = processWashUI()
                             forceClaimRemotes(wash, guid)
                             if not stillWashing then break end
                             currentWait = currentWait + 1
                         end
                         
                         warn("WASH_SWEEP_START")
-                        for finalSweep = 1, 8 do
+                        for finalSweep = 1, 6 do
                             task.wait(0.5)
-                            autoClaimUI()
+                            processWashUI()
                             forceClaimRemotes(wash, guid)
+                        end
+                        
+                        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+                        local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
+                        local washShop = uiC and uiC:FindFirstChild("WashShopPanel")
+                        if washShop and washShop.Visible then
+                            local closeBtn = washShop:FindFirstChild("HeaderBar") and washShop.HeaderBar:FindFirstChild("CloseButton")
+                            if closeBtn then clickUI(closeBtn) end
+                            task.wait(0.5)
                         end
                     end
                     
