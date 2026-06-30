@@ -61,6 +61,7 @@ function FarmModule.init(Config, Utils, WashModule)
             end
             
             if auctionUI and auctionUI.Visible then
+                warn("DIAG_FARM_AUC_START")
                 local noneVisibleCount = 0
                 while Config.IsFarming do
                     if auctionUI.Visible then 
@@ -68,20 +69,27 @@ function FarmModule.init(Config, Utils, WashModule)
                     else 
                         noneVisibleCount = noneVisibleCount + 1 
                     end
-                    if noneVisibleCount >= 3 then break end
+                    if noneVisibleCount >= 3 then 
+                        warn("DIAG_FARM_AUC_END")
+                        break 
+                    end
                     task.wait(0.5)
                 end
                 task.wait(2)
             else
+                warn("DIAG_FARM_NO_UI")
                 task.wait(1)
                 return
             end
+            
+            warn("DIAG_FARM_PRE_COL_" .. tostring(Config.IsFarming))
             
             local garagePos = targetPrompt.Parent.Position
             local maxIdleChecks = 2 
             local idleChecks = 0
             
             while Config.IsFarming do
+                warn("DIAG_FARM_COL_IDLE_" .. tostring(idleChecks))
                 if Config.AutoUnload then
                     local currentVehicle = Utils.getCurrentVehicle()
                     if currentVehicle then

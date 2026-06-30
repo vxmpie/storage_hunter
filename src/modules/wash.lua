@@ -54,6 +54,7 @@ function WashModule.init(Config, Utils)
     end
 
     local function autoClaimUI()
+        warn("DIAG_WASH_CLAIM_START")
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         local uiC = pGui and pGui:FindFirstChild("UIControllerGui")
         if not uiC then return end
@@ -63,6 +64,7 @@ function WashModule.init(Config, Utils)
             for i = 1, 3 do
                 local slot = washShop.SlotsContainer:FindFirstChild("Slot" .. tostring(i))
                 if slot and slot:FindFirstChild("Content") then
+                    warn("DIAG_WASH_SLOT_" .. tostring(i))
                     clickUI(slot.Content:FindFirstChild("CollectBtn"))
                     task.wait(0.1)
                     clickUI(slot.Content:FindFirstChild("ClaimBtn"))
@@ -72,8 +74,10 @@ function WashModule.init(Config, Utils)
 
         local washReveal = uiC:FindFirstChild("WashReveal")
         if washReveal and washReveal:FindFirstChild("Content") then
+            warn("DIAG_WASH_REV")
             clickUI(washReveal.Content:FindFirstChild("ClaimBtn"))
         end
+        warn("DIAG_WASH_CLAIM_END")
     end
 
     local function getRarity(itemId)
