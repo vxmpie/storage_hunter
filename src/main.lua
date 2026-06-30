@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 local heartbeatConnection = nil
 
 local function loadModule(fileName)
-    local url = repoBase .. fileName
+    local url = repoBase .. fileName .. "?t=" .. tostring(tick())
     local success, result = pcall(function() return game:HttpGet(url) end)
     
     if not success or result == "404: Not Found" then
