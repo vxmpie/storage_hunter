@@ -28,34 +28,23 @@ function WashModule.init(Config, Utils)
     local function clickUI(btn)
         if not btn then return end
         pcall(function()
-            if type(firesignal) == "function" then
-                pcall(function() firesignal(btn.MouseButton1Click) end)
-                pcall(function() firesignal(btn.MouseButton1Down) end)
-                pcall(function() firesignal(btn.Activated) end)
-            end
-            
             if type(getconnections) == "function" then
-                local s1, conns = pcall(function() return getconnections(btn.MouseButton1Click) end)
-                if s1 and type(conns) == "table" then
-                    for _, conn in pairs(conns) do
-                        pcall(function() 
-                            if type(conn) == "table" or type(conn) == "userdata" then
-                                if conn.Fire then conn:Fire() end
-                                if conn.Function then conn.Function() end
-                            end
-                        end)
-                    end
-                end
-                
-                local s2, conns2 = pcall(function() return getconnections(btn.Activated) end)
-                if s2 and type(conns2) == "table" then
-                    for _, conn in pairs(conns2) do
-                        pcall(function() 
-                            if type(conn) == "table" or type(conn) == "userdata" then
-                                if conn.Fire then conn:Fire() end
-                                if conn.Function then conn.Function() end
-                            end
-                        end)
+                local signals = {btn.MouseButton1Click, btn.MouseButton1Down, btn.Activated}
+                for _, sig in ipairs(signals) do
+                    local ok, conns = pcall(function() return getconnections(sig) end)
+                    if ok and type(conns) == "table" then
+                        for _, conn in pairs(conns) do
+                            pcall(function()
+                                if type(conn) == "table" or type(conn) == "userdata" then
+                                    if type(conn.Fire) == "function" then
+                                        conn:Fire()
+                                    end
+                                    if type(conn.Function) == "function" then
+                                        conn.Function()
+                                    end
+                                end
+                            end)
+                        end
                     end
                 end
             end
